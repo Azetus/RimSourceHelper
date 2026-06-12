@@ -1,7 +1,7 @@
-using Microsoft.Data.Sqlite;
 using Dapper;
+using Microsoft.Data.Sqlite;
 
-namespace RimAnalyzer.Database;
+namespace RimAnalyzer.Database.Tables;
 
 // 数据库初始化：创建所有表和索引
 public static class DatabaseInitializer

@@ -1,7 +1,7 @@
-using Microsoft.Data.Sqlite;
 using Dapper;
+using Microsoft.Data.Sqlite;
 
-namespace RimAnalyzer.Database;
+namespace RimAnalyzer.Database.Tables;
 
 // Metadata 表的数据访问（存储构建时间、版本等元信息）
 public class MetadataRepository(SqliteConnection connection)

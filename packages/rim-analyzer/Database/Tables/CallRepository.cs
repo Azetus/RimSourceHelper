@@ -1,8 +1,8 @@
-using Microsoft.Data.Sqlite;
 using Dapper;
+using Microsoft.Data.Sqlite;
 using RimAnalyzer.Models;
 
-namespace RimAnalyzer.Database;
+namespace RimAnalyzer.Database.Tables;
 
 // Calls 表的数据访问
 public class CallRepository(SqliteConnection connection)
