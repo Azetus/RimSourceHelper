@@ -41,4 +41,12 @@ public class TypeRepository(SqliteConnection connection)
         const string sql = "SELECT Id FROM Types WHERE FullName = @fullName";
         return connection.QueryFirstOrDefault<long?>(sql, new { fullName });
     }
+
+    // 获取所有 FullName → Id 映射（用于批量关联外键）
+    public Dictionary<string, long> GetFullNameToIdMap()
+    {
+        const string sql = "SELECT FullName, Id FROM Types";
+        return connection.Query<(string FullName, long Id)>(sql)
+            .ToDictionary(x => x.FullName, x => x.Id);
+    }
 }

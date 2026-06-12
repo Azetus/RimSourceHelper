@@ -1,6 +1,9 @@
 using System.CommandLine;
 using System.CommandLine.Parsing;
 using System.Text.Json;
+using RimAnalyzer.Analysis;
+using RimAnalyzer.Analysis.Metadata;
+using RimAnalyzer.Database;
 using RimAnalyzer.Models;
 
 namespace RimAnalyzer.Commands;
@@ -84,45 +87,48 @@ public static class BuildCommand
         return command;
     }
 
-    // 占位符：实际分析逻辑将在后续阶段逐步实现
-    private static async Task<BuildResult> ExecuteBuildAsync(BuildOptions options)
+    private static Task<BuildResult> ExecuteBuildAsync(BuildOptions options)
     {
-        Log($"[INFO] Loading assemblies: {string.Join(", ", options.Assemblies)}");
-        await Task.Delay(50);
+        // 加载目标程序集
+        var assemblies = AssemblyLoader.Load(options.Assemblies, options.References, Log);
 
-        Log($"[INFO] Reference paths: {string.Join(", ", options.References)}");
-        await Task.Delay(50);
+        if (assemblies.Count == 0)
+            throw new InvalidOperationException("No assemblies were loaded successfully.");
 
-        // 阶段1：元数据收集（Types, Methods, Fields, Properties）
-        Log("[INFO] Collecting metadata (types, methods, fields, properties)...");
-        await Task.Delay(50);
-
-        // 阶段2：继承关系构建
-        Log("[INFO] Building inheritance graph...");
-        await Task.Delay(50);
-
-        // 阶段3：IL 调用图分析
-        Log("[INFO] Analyzing IL call graph (call/callvirt/newobj)...");
-        await Task.Delay(50);
-
-        // 阶段4：Defs XML 解析
-        Log($"[INFO] Parsing defs XML from: {options.DefsPath}");
-        await Task.Delay(50);
-
-        // 阶段5：写入 SQLite
-        Log($"[INFO] Writing database to: {options.Output}");
-        await Task.Delay(50);
-
-        Log("[INFO] Build complete.");
-
-        return new BuildResult
+        try
         {
-            Status = "success",
-            Types = 0,
-            Methods = 0,
-            Calls = 0,
-            Defs = 0
-        };
+            // 阶段1+2：元数据收集（Types, Methods, Fields, Properties, Inheritance）
+            var collected = MetadataCollector.Collect(assemblies, Log);
+
+            // 阶段3：IL 调用图分析
+            Log("[INFO] Analyzing IL call graph (call/callvirt/newobj)...");
+            // TODO: CallGraphAnalyzer
+
+            // 阶段4：Defs XML 解析
+            Log($"[INFO] Parsing defs XML from: {options.DefsPath}");
+            // TODO: DefParser
+
+            // 阶段5：写入 SQLite
+            Log($"[INFO] Writing database to: {options.Output}");
+            using var db = DatabaseContext.Open(options.Output, options.Force);
+            var writeResult = MetadataWriter.Write(db, collected, Log);
+
+            Log("[INFO] Build complete.");
+
+            return Task.FromResult(new BuildResult
+            {
+                Status = "success",
+                Types = writeResult.Types,
+                Methods = writeResult.Methods,
+                Calls = 0,
+                Defs = 0
+            });
+        }
+        finally
+        {
+            foreach (var asm in assemblies)
+                asm.Dispose();
+        }
     }
 
     // 日志输出到 stderr，避免污染 stdout 的 JSON 结果
