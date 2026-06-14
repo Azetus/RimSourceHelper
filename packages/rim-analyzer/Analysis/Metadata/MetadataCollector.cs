@@ -6,28 +6,30 @@ namespace RimAnalyzer.Analysis.Metadata;
 // 从 Cecil AssemblyDefinition 中提取类型/方法/字段/属性元数据
 public static class MetadataCollector
 {
-    public static List<TypeMetadata> Collect(IReadOnlyList<AssemblyDefinition> assemblies, Action<string> log)
+    public static CollectionResult Collect(IReadOnlyList<AssemblyDefinition> assemblies, Action<string> log)
     {
-        var result = new List<TypeMetadata>();
+        var types = new List<TypeMetadata>();
+        var methodMap = new Dictionary<MethodDefinition, MethodEntity>();
 
         foreach (var asm in assemblies)
         {
             log($"[INFO] Scanning assembly: {asm.Name.Name}");
 
             foreach (var type in asm.MainModule.Types)
-                CollectTypeRecursive(type, asm.Name.Name, result);
+                CollectTypeRecursive(type, asm.Name.Name, types, methodMap);
         }
 
-        log($"[INFO] Collected {result.Count} types, " +
-            $"{result.Sum(t => t.Methods.Count)} methods, " +
-            $"{result.Sum(t => t.Fields.Count)} fields, " +
-            $"{result.Sum(t => t.Properties.Count)} properties");
+        log($"[INFO] Collected {types.Count} types, " +
+            $"{methodMap.Count} methods, " +
+            $"{types.Sum(t => t.Fields.Count)} fields, " +
+            $"{types.Sum(t => t.Properties.Count)} properties");
 
-        return result;
+        return new CollectionResult { Types = types, MethodMap = methodMap };
     }
 
     // 收集单个类型并递归处理嵌套类型
-    private static void CollectTypeRecursive(TypeDefinition type, string assemblyName, List<TypeMetadata> output)
+    private static void CollectTypeRecursive(TypeDefinition type, string assemblyName,
+        List<TypeMetadata> output, Dictionary<MethodDefinition, MethodEntity> methodMap)
     {
         if (type.Name == "<Module>")
             return;
@@ -50,7 +52,7 @@ public static class MetadataCollector
             Interfaces = type.Interfaces.Select(i => i.InterfaceType.FullName).ToList()
         };
 
-        CollectMethods(type, meta);
+        CollectMethods(type, meta, methodMap);
         CollectFields(type, meta);
         CollectProperties(type, meta);
 
@@ -58,10 +60,11 @@ public static class MetadataCollector
 
         // 递归收集嵌套类型
         foreach (var nested in type.NestedTypes)
-            CollectTypeRecursive(nested, assemblyName, output);
+            CollectTypeRecursive(nested, assemblyName, output, methodMap);
     }
 
-    private static void CollectMethods(TypeDefinition type, TypeMetadata meta)
+    private static void CollectMethods(TypeDefinition type, TypeMetadata meta,
+        Dictionary<MethodDefinition, MethodEntity> methodMap)
     {
         foreach (var method in type.Methods)
         {
@@ -71,7 +74,7 @@ public static class MetadataCollector
             if (method.IsSpecialName && (method.Name.StartsWith("add_") || method.Name.StartsWith("remove_")))
                 continue;
 
-            meta.Methods.Add(new MethodEntity
+            var entity = new MethodEntity
             {
                 Name = method.Name,
                 FullName = $"{type.FullName}.{method.Name}",
@@ -81,7 +84,10 @@ public static class MetadataCollector
                 IsVirtual = method.IsVirtual,
                 IsAbstract = method.IsAbstract,
                 Accessibility = GetMethodAccessibility(method)
-            });
+            };
+
+            meta.Methods.Add(entity);
+            methodMap[method] = entity;
         }
     }
 

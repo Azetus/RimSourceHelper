@@ -1,7 +1,9 @@
 using System.CommandLine;
 using System.CommandLine.Parsing;
 using System.Text.Json;
+using Mono.Cecil;
 using RimAnalyzer.Analysis;
+using RimAnalyzer.Analysis.CallGraph;
 using RimAnalyzer.Analysis.Metadata;
 using RimAnalyzer.Database;
 using RimAnalyzer.Models;
@@ -97,21 +99,33 @@ public static class BuildCommand
 
         try
         {
-            // 阶段1+2：元数据收集（Types, Methods, Fields, Properties, Inheritance）
-            var collected = MetadataCollector.Collect(assemblies, Log);
+            // 阶段1：元数据收集（Types, Methods, Fields, Properties）
+            var collection = MetadataCollector.Collect(assemblies, Log);
 
-            // 阶段3：IL 调用图分析
-            Log("[INFO] Analyzing IL call graph (call/callvirt/newobj)...");
-            // TODO: CallGraphAnalyzer
-
-            // 阶段4：Defs XML 解析
-            Log($"[INFO] Parsing defs XML from: {options.DefsPath}");
-            // TODO: DefParser
-
-            // 阶段5：写入 SQLite
+            // 阶段2：写入元数据到 SQLite
             Log($"[INFO] Writing database to: {options.Output}");
             using var db = DatabaseContext.Open(options.Output, options.Force);
-            var writeResult = MetadataWriter.Write(db, collected, Log);
+            var writeResult = MetadataWriter.Write(db, collection.Types, Log);
+
+            // 阶段3：构建 MethodDefinition → Id 映射
+            var sigToId = db.Methods.GetSignatureToIdMap();
+            var methodDefToId = new Dictionary<MethodDefinition, long>();
+            foreach (var (def, entity) in collection.MethodMap)
+            {
+                if (sigToId.TryGetValue(entity.Signature, out var id))
+                    methodDefToId[def] = id;
+            }
+            Log($"[INFO] Built method mapping: {methodDefToId.Count} entries.");
+
+            // 阶段4：IL 调用图分析
+            var callPairs = CallGraphAnalyzer.Analyze(assemblies, methodDefToId, Log);
+
+            // 阶段5：写入调用关系
+            var callCount = CallGraphWriter.Write(db, callPairs, Log);
+
+            // 阶段6：Defs XML 解析
+            Log($"[INFO] Parsing defs XML from: {options.DefsPath}");
+            // TODO: DefParser
 
             Log("[INFO] Build complete.");
 
@@ -120,7 +134,7 @@ public static class BuildCommand
                 Status = "success",
                 Types = writeResult.Types,
                 Methods = writeResult.Methods,
-                Calls = 0,
+                Calls = callCount,
                 Defs = 0
             });
         }

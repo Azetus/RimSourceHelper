@@ -51,4 +51,12 @@ public class MethodRepository(SqliteConnection connection)
         const string sql = "SELECT * FROM Methods WHERE TypeId = @typeId";
         return connection.Query<MethodEntity>(sql, new { typeId });
     }
+
+    // 获取所有 Signature → Id 映射（用于构建 MethodDefinition→Id 字典）
+    public Dictionary<string, long> GetSignatureToIdMap()
+    {
+        const string sql = "SELECT Signature, Id FROM Methods";
+        return connection.Query<(string Signature, long Id)>(sql)
+            .ToDictionary(x => x.Signature, x => x.Id);
+    }
 }
