@@ -51,10 +51,11 @@ public class DatabaseContext : IDisposable
         var connection = new SqliteConnection(connectionString);
         connection.Open();
 
-        // 配置 SQLite 性能相关 PRAGMA
+        // 配置 SQLite PRAGMA
         connection.Execute("PRAGMA journal_mode = WAL;");
         connection.Execute("PRAGMA synchronous = NORMAL;");
         connection.Execute("PRAGMA foreign_keys = ON;");
+        connection.Execute("PRAGMA busy_timeout = 5000;");
 
         DatabaseInitializer.Initialize(connection);
 

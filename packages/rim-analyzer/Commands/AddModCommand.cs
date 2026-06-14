@@ -85,9 +85,12 @@ public static class AddModCommand
 
         // 打开已有数据库
         var gameResolver = new GamePathResolver(options.GamePath);
+        if (mod.AssemblyPaths.Count > 0)
+            gameResolver.Validate();
+
         using var db = DatabaseContext.Open(options.Database, force: false);
 
-        // 如果已存在同名 Source，先清除旧数据（幂等操作）
+        // 如果已存在同名 Source，先清除旧数据（事务保护，幂等操作）
         var existing = db.Sources.FindByName(mod.Name);
         if (existing is not null)
         {
@@ -172,20 +175,22 @@ public static class AddModCommand
         };
     }
 
-    // 删除指定 Source 的所有关联数据
+    // 删除指定 Source 的所有关联数据（事务保护，原子操作）
     private static void RemoveSourceData(DatabaseContext db, long sourceId)
     {
         var conn = db.Connection;
-        Dapper.SqlMapper.Execute(conn, "DELETE FROM HarmonyPatches WHERE SourceId = @sourceId", new { sourceId });
-        Dapper.SqlMapper.Execute(conn, "DELETE FROM Calls WHERE CallerMethodId IN (SELECT Id FROM Methods WHERE SourceId = @sourceId) OR CalleeMethodId IN (SELECT Id FROM Methods WHERE SourceId = @sourceId)", new { sourceId });
-        Dapper.SqlMapper.Execute(conn, "DELETE FROM Inheritance WHERE ParentTypeId IN (SELECT Id FROM Types WHERE SourceId = @sourceId) OR ChildTypeId IN (SELECT Id FROM Types WHERE SourceId = @sourceId)", new { sourceId });
-        Dapper.SqlMapper.Execute(conn, "DELETE FROM DefReferences WHERE SourceDefId IN (SELECT Id FROM Defs WHERE SourceId = @sourceId)", new { sourceId });
-        Dapper.SqlMapper.Execute(conn, "DELETE FROM Properties WHERE SourceId = @sourceId", new { sourceId });
-        Dapper.SqlMapper.Execute(conn, "DELETE FROM Fields WHERE SourceId = @sourceId", new { sourceId });
-        Dapper.SqlMapper.Execute(conn, "DELETE FROM Methods WHERE SourceId = @sourceId", new { sourceId });
-        Dapper.SqlMapper.Execute(conn, "DELETE FROM Types WHERE SourceId = @sourceId", new { sourceId });
-        Dapper.SqlMapper.Execute(conn, "DELETE FROM Defs WHERE SourceId = @sourceId", new { sourceId });
-        Dapper.SqlMapper.Execute(conn, "DELETE FROM Sources WHERE Id = @sourceId", new { sourceId });
+        using var transaction = conn.BeginTransaction();
+        Dapper.SqlMapper.Execute(conn, "DELETE FROM HarmonyPatches WHERE SourceId = @sourceId", new { sourceId }, transaction);
+        Dapper.SqlMapper.Execute(conn, "DELETE FROM Calls WHERE CallerMethodId IN (SELECT Id FROM Methods WHERE SourceId = @sourceId) OR CalleeMethodId IN (SELECT Id FROM Methods WHERE SourceId = @sourceId)", new { sourceId }, transaction);
+        Dapper.SqlMapper.Execute(conn, "DELETE FROM Inheritance WHERE ParentTypeId IN (SELECT Id FROM Types WHERE SourceId = @sourceId) OR ChildTypeId IN (SELECT Id FROM Types WHERE SourceId = @sourceId)", new { sourceId }, transaction);
+        Dapper.SqlMapper.Execute(conn, "DELETE FROM DefReferences WHERE SourceDefId IN (SELECT Id FROM Defs WHERE SourceId = @sourceId)", new { sourceId }, transaction);
+        Dapper.SqlMapper.Execute(conn, "DELETE FROM Properties WHERE SourceId = @sourceId", new { sourceId }, transaction);
+        Dapper.SqlMapper.Execute(conn, "DELETE FROM Fields WHERE SourceId = @sourceId", new { sourceId }, transaction);
+        Dapper.SqlMapper.Execute(conn, "DELETE FROM Methods WHERE SourceId = @sourceId", new { sourceId }, transaction);
+        Dapper.SqlMapper.Execute(conn, "DELETE FROM Types WHERE SourceId = @sourceId", new { sourceId }, transaction);
+        Dapper.SqlMapper.Execute(conn, "DELETE FROM Defs WHERE SourceId = @sourceId", new { sourceId }, transaction);
+        Dapper.SqlMapper.Execute(conn, "DELETE FROM Sources WHERE Id = @sourceId", new { sourceId }, transaction);
+        transaction.Commit();
     }
 
     private static void Log(string message) => Console.Error.WriteLine(message);

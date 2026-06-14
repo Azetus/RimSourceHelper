@@ -56,23 +56,31 @@ public static class RemoveModCommand
             throw new FileNotFoundException($"Database not found: {dbPath}");
 
         using var db = DatabaseContext.Open(dbPath, force: false);
-        var source = db.Sources.FindByName(name)
-            ?? throw new InvalidOperationException($"Source not found: {name}");
+        var source = db.Sources.FindByName(name);
+
+        // 幂等：源不存在时直接返回成功
+        if (source is null)
+        {
+            Log($"[INFO] Source '{name}' not found, nothing to remove.");
+            return;
+        }
 
         var conn = db.Connection;
         var sourceId = source.Id;
 
-        // 按依赖顺序删除（先删引用关系，再删实体）
-        conn.Execute("DELETE FROM HarmonyPatches WHERE SourceId = @sourceId", new { sourceId });
-        conn.Execute("DELETE FROM Calls WHERE CallerMethodId IN (SELECT Id FROM Methods WHERE SourceId = @sourceId) OR CalleeMethodId IN (SELECT Id FROM Methods WHERE SourceId = @sourceId)", new { sourceId });
-        conn.Execute("DELETE FROM Inheritance WHERE ParentTypeId IN (SELECT Id FROM Types WHERE SourceId = @sourceId) OR ChildTypeId IN (SELECT Id FROM Types WHERE SourceId = @sourceId)", new { sourceId });
-        conn.Execute("DELETE FROM DefReferences WHERE SourceDefId IN (SELECT Id FROM Defs WHERE SourceId = @sourceId)", new { sourceId });
-        conn.Execute("DELETE FROM Properties WHERE SourceId = @sourceId", new { sourceId });
-        conn.Execute("DELETE FROM Fields WHERE SourceId = @sourceId", new { sourceId });
-        conn.Execute("DELETE FROM Methods WHERE SourceId = @sourceId", new { sourceId });
-        conn.Execute("DELETE FROM Types WHERE SourceId = @sourceId", new { sourceId });
-        conn.Execute("DELETE FROM Defs WHERE SourceId = @sourceId", new { sourceId });
-        conn.Execute("DELETE FROM Sources WHERE Id = @sourceId", new { sourceId });
+        // 事务保护：原子删除所有关联数据
+        using var transaction = conn.BeginTransaction();
+        conn.Execute("DELETE FROM HarmonyPatches WHERE SourceId = @sourceId", new { sourceId }, transaction);
+        conn.Execute("DELETE FROM Calls WHERE CallerMethodId IN (SELECT Id FROM Methods WHERE SourceId = @sourceId) OR CalleeMethodId IN (SELECT Id FROM Methods WHERE SourceId = @sourceId)", new { sourceId }, transaction);
+        conn.Execute("DELETE FROM Inheritance WHERE ParentTypeId IN (SELECT Id FROM Types WHERE SourceId = @sourceId) OR ChildTypeId IN (SELECT Id FROM Types WHERE SourceId = @sourceId)", new { sourceId }, transaction);
+        conn.Execute("DELETE FROM DefReferences WHERE SourceDefId IN (SELECT Id FROM Defs WHERE SourceId = @sourceId)", new { sourceId }, transaction);
+        conn.Execute("DELETE FROM Properties WHERE SourceId = @sourceId", new { sourceId }, transaction);
+        conn.Execute("DELETE FROM Fields WHERE SourceId = @sourceId", new { sourceId }, transaction);
+        conn.Execute("DELETE FROM Methods WHERE SourceId = @sourceId", new { sourceId }, transaction);
+        conn.Execute("DELETE FROM Types WHERE SourceId = @sourceId", new { sourceId }, transaction);
+        conn.Execute("DELETE FROM Defs WHERE SourceId = @sourceId", new { sourceId }, transaction);
+        conn.Execute("DELETE FROM Sources WHERE Id = @sourceId", new { sourceId }, transaction);
+        transaction.Commit();
 
         Log($"[INFO] Removed source: {name} (id={sourceId})");
     }
