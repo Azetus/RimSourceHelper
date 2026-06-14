@@ -11,8 +11,8 @@ public class FieldRepository(SqliteConnection connection)
     public int BulkInsert(IEnumerable<FieldEntity> fields)
     {
         const string sql = """
-            INSERT INTO Fields (TypeId, Name, FieldType, IsStatic, Accessibility)
-            VALUES (@TypeId, @Name, @FieldType, @IsStatic, @Accessibility)
+            INSERT INTO Fields (TypeId, Name, FieldType, IsStatic, Accessibility, SourceId)
+            VALUES (@TypeId, @Name, @FieldType, @IsStatic, @Accessibility, @SourceId)
             """;
 
         using var transaction = connection.BeginTransaction();

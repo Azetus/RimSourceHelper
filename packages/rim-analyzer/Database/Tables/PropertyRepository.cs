@@ -11,8 +11,8 @@ public class PropertyRepository(SqliteConnection connection)
     public int BulkInsert(IEnumerable<PropertyEntity> properties)
     {
         const string sql = """
-            INSERT INTO Properties (TypeId, Name, PropertyType, HasGetter, HasSetter, Accessibility)
-            VALUES (@TypeId, @Name, @PropertyType, @HasGetter, @HasSetter, @Accessibility)
+            INSERT INTO Properties (TypeId, Name, PropertyType, HasGetter, HasSetter, Accessibility, SourceId)
+            VALUES (@TypeId, @Name, @PropertyType, @HasGetter, @HasSetter, @Accessibility, @SourceId)
             """;
 
         using var transaction = connection.BeginTransaction();

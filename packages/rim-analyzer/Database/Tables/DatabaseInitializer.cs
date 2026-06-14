@@ -8,6 +8,7 @@ public static class DatabaseInitializer
 {
     public static void Initialize(SqliteConnection connection)
     {
+        connection.Execute(CreateSourcesSql);
         connection.Execute(CreateTypesSql);
         connection.Execute(CreateMethodsSql);
         connection.Execute(CreateFieldsSql);
@@ -18,6 +19,17 @@ public static class DatabaseInitializer
         connection.Execute(CreateDefReferencesSql);
         connection.Execute(CreateMetadataSql);
     }
+
+    private const string CreateSourcesSql = """
+        CREATE TABLE IF NOT EXISTS Sources (
+            Id            INTEGER PRIMARY KEY,
+            Name          TEXT NOT NULL UNIQUE,
+            Type          TEXT NOT NULL,
+            PackageId     TEXT,
+            AssemblyPath  TEXT,
+            RootPath      TEXT
+        );
+        """;
 
     private const string CreateTypesSql = """
         CREATE TABLE IF NOT EXISTS Types (
@@ -31,10 +43,12 @@ public static class DatabaseInitializer
             IsEnum        INTEGER NOT NULL DEFAULT 0,
             IsSealed      INTEGER NOT NULL DEFAULT 0,
             Accessibility TEXT,
-            AssemblyName  TEXT
+            AssemblyName  TEXT,
+            SourceId      INTEGER NOT NULL REFERENCES Sources(Id)
         );
         CREATE INDEX IF NOT EXISTS idx_types_name ON Types(Name);
         CREATE INDEX IF NOT EXISTS idx_types_namespace ON Types(Namespace);
+        CREATE INDEX IF NOT EXISTS idx_types_source ON Types(SourceId);
         """;
 
     private const string CreateMethodsSql = """
@@ -48,11 +62,13 @@ public static class DatabaseInitializer
             IsStatic      INTEGER NOT NULL DEFAULT 0,
             IsVirtual     INTEGER NOT NULL DEFAULT 0,
             IsAbstract    INTEGER NOT NULL DEFAULT 0,
-            Accessibility TEXT
+            Accessibility TEXT,
+            SourceId      INTEGER NOT NULL REFERENCES Sources(Id)
         );
         CREATE INDEX IF NOT EXISTS idx_methods_name ON Methods(Name);
         CREATE INDEX IF NOT EXISTS idx_methods_typeid ON Methods(TypeId);
         CREATE INDEX IF NOT EXISTS idx_methods_fullname ON Methods(FullName);
+        CREATE INDEX IF NOT EXISTS idx_methods_source ON Methods(SourceId);
         """;
 
     private const string CreateFieldsSql = """
@@ -62,7 +78,8 @@ public static class DatabaseInitializer
             Name          TEXT NOT NULL,
             FieldType     TEXT,
             IsStatic      INTEGER NOT NULL DEFAULT 0,
-            Accessibility TEXT
+            Accessibility TEXT,
+            SourceId      INTEGER NOT NULL REFERENCES Sources(Id)
         );
         CREATE INDEX IF NOT EXISTS idx_fields_typeid ON Fields(TypeId);
         """;
@@ -75,7 +92,8 @@ public static class DatabaseInitializer
             PropertyType  TEXT,
             HasGetter     INTEGER NOT NULL DEFAULT 0,
             HasSetter     INTEGER NOT NULL DEFAULT 0,
-            Accessibility TEXT
+            Accessibility TEXT,
+            SourceId      INTEGER NOT NULL REFERENCES Sources(Id)
         );
         CREATE INDEX IF NOT EXISTS idx_properties_typeid ON Properties(TypeId);
         """;
@@ -109,10 +127,12 @@ public static class DatabaseInitializer
             Label       TEXT,
             ParentDef   TEXT,
             SourceFile  TEXT,
-            MergedJson  TEXT
+            MergedJson  TEXT,
+            SourceId    INTEGER NOT NULL REFERENCES Sources(Id)
         );
         CREATE INDEX IF NOT EXISTS idx_defs_name ON Defs(DefName);
         CREATE INDEX IF NOT EXISTS idx_defs_type ON Defs(DefType);
+        CREATE INDEX IF NOT EXISTS idx_defs_source ON Defs(SourceId);
         """;
 
     private const string CreateDefReferencesSql = """

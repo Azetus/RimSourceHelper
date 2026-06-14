@@ -10,26 +10,14 @@ using RimAnalyzer.Models;
 
 namespace RimAnalyzer.Commands;
 
-// build 子命令：分析 DLL 构建知识库数据库
+// build 子命令：从游戏根目录分析 Core + DLC 并构建知识库
 public static class BuildCommand
 {
     public static Command Create()
     {
-        var assembliesOption = new Option<string[]>("--assemblies")
+        var gamePathOption = new Option<string>("--game-path")
         {
-            Description = "Target DLL paths to analyze (can be specified multiple times)",
-            Required = true
-        };
-
-        var referencesOption = new Option<string[]>("--references")
-        {
-            Description = "Reference DLL directories (can be specified multiple times)",
-            Required = true
-        };
-
-        var defsPathOption = new Option<string>("--defs-path")
-        {
-            Description = "Defs XML root directory",
+            Description = "RimWorld game root directory",
             Required = true
         };
 
@@ -49,23 +37,19 @@ public static class BuildCommand
             Description = "Enable verbose logging"
         };
 
-        var command = new Command("build", "Analyze RimWorld DLLs and build knowledge database")
+        var command = new Command("build", "Analyze RimWorld Core + DLCs and build knowledge database")
         {
-            assembliesOption,
-            referencesOption,
-            defsPathOption,
+            gamePathOption,
             outputOption,
             forceOption,
             verboseOption
         };
 
-        command.SetAction(async (parseResult, cancellationToken) =>
+        command.SetAction((parseResult, _) =>
         {
             var options = new BuildOptions
             {
-                Assemblies = parseResult.GetValue(assembliesOption)!,
-                References = parseResult.GetValue(referencesOption)!,
-                DefsPath = parseResult.GetValue(defsPathOption)!,
+                GamePath = parseResult.GetValue(gamePathOption)!,
                 Output = parseResult.GetValue(outputOption)!,
                 Force = parseResult.GetValue(forceOption),
                 Verbose = parseResult.GetValue(verboseOption)
@@ -73,41 +57,62 @@ public static class BuildCommand
 
             try
             {
-                var result = await ExecuteBuildAsync(options);
-                var json = JsonSerializer.Serialize(result);
-                Console.WriteLine(json);
+                var result = Execute(options);
+                Console.WriteLine(JsonSerializer.Serialize(result));
             }
             catch (Exception ex)
             {
-                var result = new BuildResult { Status = "error", Error = ex.Message };
-                var json = JsonSerializer.Serialize(result);
-                Console.WriteLine(json);
+                Console.WriteLine(JsonSerializer.Serialize(
+                    new BuildResult { Status = "error", Error = ex.Message }));
                 Environment.ExitCode = 1;
             }
+
+            return Task.CompletedTask;
         });
 
         return command;
     }
 
-    private static Task<BuildResult> ExecuteBuildAsync(BuildOptions options)
+    private static BuildResult Execute(BuildOptions options)
     {
-        // 加载目标程序集
-        var assemblies = AssemblyLoader.Load(options.Assemblies, options.References, Log);
+        // 解析游戏路径
+        var resolver = new GamePathResolver(options.GamePath);
+        resolver.Validate();
+        Log($"[INFO] Game root: {resolver.GameRoot}");
+
+        // 加载程序集
+        var assemblies = AssemblyLoader.Load(
+            [resolver.MainAssemblyPath],
+            [resolver.ManagedDir],
+            Log);
 
         if (assemblies.Count == 0)
-            throw new InvalidOperationException("No assemblies were loaded successfully.");
+            throw new InvalidOperationException("Failed to load Assembly-CSharp.dll.");
 
         try
         {
-            // 阶段1：元数据收集（Types, Methods, Fields, Properties）
+            // 元数据收集
             var collection = MetadataCollector.Collect(assemblies, Log);
 
-            // 阶段2：写入元数据到 SQLite
-            Log($"[INFO] Writing database to: {options.Output}");
+            // 打开数据库
             using var db = DatabaseContext.Open(options.Output, options.Force);
-            var writeResult = MetadataWriter.Write(db, collection.Types, Log);
 
-            // 阶段3：构建 MethodDefinition → Id 映射
+            // 创建 Source 记录
+            var coreSource = new SourceEntity
+            {
+                Name = "RimWorld Core",
+                Type = "core",
+                PackageId = "Ludeon.RimWorld",
+                AssemblyPath = resolver.MainAssemblyPath,
+                RootPath = resolver.GameRoot
+            };
+            var sourceId = db.Sources.Insert(coreSource);
+            Log($"[INFO] Created source: {coreSource.Name} (id={sourceId})");
+
+            // 写入元数据
+            var writeResult = MetadataWriter.Write(db, collection.Types, sourceId, Log);
+
+            // 构建 MethodDefinition → Id 映射
             var sigToId = db.Methods.GetSignatureToIdMap();
             var methodDefToId = new Dictionary<MethodDefinition, long>();
             foreach (var (def, entity) in collection.MethodMap)
@@ -117,26 +122,25 @@ public static class BuildCommand
             }
             Log($"[INFO] Built method mapping: {methodDefToId.Count} entries.");
 
-            // 阶段4：IL 调用图分析
+            // 调用图分析
             var callPairs = CallGraphAnalyzer.Analyze(assemblies, methodDefToId, Log);
-
-            // 阶段5：写入调用关系
             var callCount = CallGraphWriter.Write(db, callPairs, Log);
 
-            // 阶段6：Defs XML 解析
-            Log($"[INFO] Parsing defs XML from: {options.DefsPath}");
-            // TODO: DefParser
+            // 检测 DLC（Defs 解析 TODO）
+            var dlcs = resolver.DetectDlcs();
+            if (dlcs.Count > 0)
+                Log($"[INFO] Detected DLCs: {string.Join(", ", dlcs)} (Defs parsing not yet implemented)");
 
             Log("[INFO] Build complete.");
 
-            return Task.FromResult(new BuildResult
+            return new BuildResult
             {
                 Status = "success",
                 Types = writeResult.Types,
                 Methods = writeResult.Methods,
                 Calls = callCount,
                 Defs = 0
-            });
+            };
         }
         finally
         {
@@ -145,9 +149,5 @@ public static class BuildCommand
         }
     }
 
-    // 日志输出到 stderr，避免污染 stdout 的 JSON 结果
-    private static void Log(string message)
-    {
-        Console.Error.WriteLine(message);
-    }
+    private static void Log(string message) => Console.Error.WriteLine(message);
 }

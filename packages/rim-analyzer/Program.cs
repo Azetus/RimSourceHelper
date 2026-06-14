@@ -9,6 +9,8 @@ class Program
     {
         var rootCommand = new RootCommand("RimWorld DLL analysis tool");
         rootCommand.Add(BuildCommand.Create());
+        rootCommand.Add(AddModCommand.Create());
+        rootCommand.Add(RemoveModCommand.Create());
         return rootCommand.Parse(args).Invoke();
     }
 }

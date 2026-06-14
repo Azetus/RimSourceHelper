@@ -7,12 +7,12 @@ namespace RimAnalyzer.Database.Tables;
 // Types 表的数据访问
 public class TypeRepository(SqliteConnection connection)
 {
-    // 批量插入类型记录，返回插入数量
+    // 批量插入类型记录（跳过 FullName 冲突），返回插入数量
     public int BulkInsert(IEnumerable<TypeEntity> types)
     {
         const string sql = """
-            INSERT INTO Types (Namespace, Name, FullName, BaseType, IsAbstract, IsInterface, IsEnum, IsSealed, Accessibility, AssemblyName)
-            VALUES (@Namespace, @Name, @FullName, @BaseType, @IsAbstract, @IsInterface, @IsEnum, @IsSealed, @Accessibility, @AssemblyName)
+            INSERT OR IGNORE INTO Types (Namespace, Name, FullName, BaseType, IsAbstract, IsInterface, IsEnum, IsSealed, Accessibility, AssemblyName, SourceId)
+            VALUES (@Namespace, @Name, @FullName, @BaseType, @IsAbstract, @IsInterface, @IsEnum, @IsSealed, @Accessibility, @AssemblyName, @SourceId)
             """;
 
         using var transaction = connection.BeginTransaction();

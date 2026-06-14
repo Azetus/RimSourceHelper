@@ -125,7 +125,8 @@ public static class MetadataCollector
         var paramTypes = method.Parameters
             .Select(p => FormatTypeName(p.ParameterType))
             .ToArray();
-        return $"{type.FullName}.{method.Name}({string.Join(",", paramTypes)})";
+        var returnType = FormatTypeName(method.ReturnType);
+        return $"{returnType} {type.FullName}.{method.Name}({string.Join(",", paramTypes)})";
     }
 
     private static string FormatTypeName(TypeReference typeRef)

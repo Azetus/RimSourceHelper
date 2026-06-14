@@ -9,4 +9,5 @@ public class FieldEntity
     public string? FieldType { get; set; }
     public bool IsStatic { get; set; }
     public string? Accessibility { get; set; }
+    public long SourceId { get; set; }
 }

@@ -8,6 +8,7 @@ namespace RimAnalyzer.Database;
 public class DatabaseContext : IDisposable
 {
     public SqliteConnection Connection { get; }
+    public SourceRepository Sources { get; }
     public TypeRepository Types { get; }
     public MethodRepository Methods { get; }
     public FieldRepository Fields { get; }
@@ -21,6 +22,7 @@ public class DatabaseContext : IDisposable
     private DatabaseContext(SqliteConnection connection)
     {
         Connection = connection;
+        Sources = new SourceRepository(connection);
         Types = new TypeRepository(connection);
         Methods = new MethodRepository(connection);
         Fields = new FieldRepository(connection);

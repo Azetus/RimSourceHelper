@@ -7,9 +7,12 @@ public static class MetadataWriter
 {
     public record WriteResult(int Types, int Methods, int Fields, int Properties, int Inheritance);
 
-    public static WriteResult Write(DatabaseContext db, List<TypeMetadata> collected, Action<string> log)
+    public static WriteResult Write(DatabaseContext db, List<TypeMetadata> collected, long sourceId, Action<string> log)
     {
-        // 步骤1：插入所有类型
+        // 步骤1：为所有类型设置 SourceId 并插入
+        foreach (var meta in collected)
+            meta.Type.SourceId = sourceId;
+
         var typeEntities = collected.Select(c => c.Type).ToList();
         var typeCount = db.Types.BulkInsert(typeEntities);
         log($"[INFO] Inserted {typeCount} types.");
@@ -17,7 +20,7 @@ public static class MetadataWriter
         // 步骤2：构建 FullName → Id 映射
         var typeIdMap = db.Types.GetFullNameToIdMap();
 
-        // 步骤3：为成员分配 TypeId，收集到扁平列表
+        // 步骤3：为成员分配 TypeId 和 SourceId，收集到扁平列表
         var allMethods = new List<MethodEntity>();
         var allFields = new List<FieldEntity>();
         var allProperties = new List<PropertyEntity>();
@@ -30,16 +33,19 @@ public static class MetadataWriter
             foreach (var m in meta.Methods)
             {
                 m.TypeId = typeId;
+                m.SourceId = sourceId;
                 allMethods.Add(m);
             }
             foreach (var f in meta.Fields)
             {
                 f.TypeId = typeId;
+                f.SourceId = sourceId;
                 allFields.Add(f);
             }
             foreach (var p in meta.Properties)
             {
                 p.TypeId = typeId;
+                p.SourceId = sourceId;
                 allProperties.Add(p);
             }
         }

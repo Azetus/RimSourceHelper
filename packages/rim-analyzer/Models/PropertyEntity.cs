@@ -10,4 +10,5 @@ public class PropertyEntity
     public bool HasGetter { get; set; }
     public bool HasSetter { get; set; }
     public string? Accessibility { get; set; }
+    public long SourceId { get; set; }
 }

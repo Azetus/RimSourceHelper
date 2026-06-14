@@ -10,4 +10,5 @@ public class DefEntity
     public string? ParentDef { get; set; }
     public string? SourceFile { get; set; }
     public string? MergedJson { get; set; }
+    public long SourceId { get; set; }
 }

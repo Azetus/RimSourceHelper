@@ -11,8 +11,8 @@ public class MethodRepository(SqliteConnection connection)
     public int BulkInsert(IEnumerable<MethodEntity> methods)
     {
         const string sql = """
-            INSERT INTO Methods (TypeId, Name, FullName, Signature, ReturnType, IsStatic, IsVirtual, IsAbstract, Accessibility)
-            VALUES (@TypeId, @Name, @FullName, @Signature, @ReturnType, @IsStatic, @IsVirtual, @IsAbstract, @Accessibility)
+            INSERT INTO Methods (TypeId, Name, FullName, Signature, ReturnType, IsStatic, IsVirtual, IsAbstract, Accessibility, SourceId)
+            VALUES (@TypeId, @Name, @FullName, @Signature, @ReturnType, @IsStatic, @IsVirtual, @IsAbstract, @Accessibility, @SourceId)
             """;
 
         using var transaction = connection.BeginTransaction();
@@ -56,7 +56,9 @@ public class MethodRepository(SqliteConnection connection)
     public Dictionary<string, long> GetSignatureToIdMap()
     {
         const string sql = "SELECT Signature, Id FROM Methods";
-        return connection.Query<(string Signature, long Id)>(sql)
-            .ToDictionary(x => x.Signature, x => x.Id);
+        var map = new Dictionary<string, long>();
+        foreach (var (sig, id) in connection.Query<(string Signature, long Id)>(sql))
+            map.TryAdd(sig, id);
+        return map;
     }
 }
