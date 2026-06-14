@@ -1,144 +1,151 @@
-# rim-analyzer CLI Reference
+# rim-analyzer
 
-RimWorld DLL analysis tool — builds structured knowledge databases from game assemblies and Defs.
+RimWorld DLL/XML analysis tool. Builds structured knowledge databases from game assemblies and Defs using Mono.Cecil.
+
+## Typical Workflow
+
+```bash
+rim-analyzer build --game-path "D:\Steam\steamapps\common\RimWorld" --output "./rimworld.db"
+rim-analyzer add-mod --mod-path "D:\Steam\steamapps\common\RimWorld\Mods\VanillaFireModes" --db "./rimworld.db" --game-path "D:\Steam\steamapps\common\RimWorld"
+rim-analyzer decompile --target "Verse.Pawn" --db "./rimworld.db"
+rim-analyzer harmony --mod-path "D:\Steam\steamapps\common\RimWorld\Mods\VanillaFireModes" --game-path "D:\Steam\steamapps\common\RimWorld"
+```
 
 ## Commands
 
 ### `build`
 
-Analyze RimWorld Core + DLCs and build a knowledge database from scratch.
+Analyze Core + DLCs → full rebuild of knowledge database.
 
 ```bash
 rim-analyzer build --game-path <path> --output <path> [--verbose]
 ```
 
-| Option | Type | Required | Description |
-|--------|------|----------|-------------|
-| `--game-path` | path | ✅ | RimWorld game root directory |
-| `--output` | path | ✅ | Output SQLite database path |
-| `--verbose` | flag | | Enable verbose logging |
+| Option | Required | Description |
+|--------|----------|-------------|
+| `--game-path` | ✅ | RimWorld game root directory |
+| `--output` | ✅ | Output SQLite path (always overwritten) |
+| `--verbose` | | Verbose stderr logging |
 
-> `build` always performs a full rebuild. If the output file exists, it is deleted first.
-
-**What it does:**
-1. Loads `Assembly-CSharp.dll` from `{game-path}/RimWorldWin64_Data/Managed/`
-2. Extracts all types, methods, fields, properties (metadata)
-3. Builds inheritance graph
-4. Analyzes IL call graph (call/callvirt/newobj/ldftn)
-5. Parses Defs XML from `{game-path}/Data/Core/Defs/` and all detected DLCs
-6. Detects Def-to-Def references
-7. Writes everything to SQLite with source tracking
-
-**Output (stdout):**
+```bash
+$ rim-analyzer build --game-path "D:\Steam\steamapps\common\RimWorld" --output "./rimworld.db"
+```
 ```json
 {"status":"success","types":16157,"methods":79712,"calls":153596,"defs":13809}
-```
-
-**Example:**
-```bash
-rim-analyzer build \
-  --game-path "D:\Steam\steamapps\common\RimWorld" \
-  --output "./rimworld.db"
 ```
 
 ---
 
 ### `add-mod`
 
-Add a mod's code and Defs to an existing database. Idempotent — re-running replaces previous data for the same mod.
+Add mod code + Defs + Harmony patches to existing database. Idempotent.
 
 ```bash
 rim-analyzer add-mod --mod-path <path> --db <path> --game-path <path> [--verbose]
 ```
 
-| Option | Type | Required | Description |
-|--------|------|----------|-------------|
-| `--mod-path` | path | ✅ | Mod root directory |
-| `--db` | path | ✅ | Existing database path |
-| `--game-path` | path | ✅ | RimWorld game root (for reference DLLs) |
-| `--verbose` | flag | | Enable verbose logging |
+| Option | Required | Description |
+|--------|----------|-------------|
+| `--mod-path` | ✅ | Mod root directory |
+| `--db` | ✅ | Existing database path |
+| `--game-path` | ✅ | RimWorld game root (for DLL reference resolution) |
+| `--verbose` | | Verbose stderr logging |
 
-**What it does:**
-1. Reads `About/About.xml` to get mod name and packageId
-2. Recursively finds all `.dll` files in the mod directory
-3. Recursively finds all `.xml` files (filters to `<Defs>` root only)
-4. Loads DLLs with game's Managed directory as reference
-5. Extracts metadata + call graph (including cross-mod calls to Core)
-6. Parses Defs and detects references
-7. Writes to existing database with mod-specific source tracking
-
-**Output (stdout):**
-```json
-{"status":"success","types":1258,"methods":5413,"calls":4253,"defs":8545}
-```
-
-**Example:**
 ```bash
-rim-analyzer add-mod \
-  --mod-path "D:\Steam\steamapps\workshop\content\294100\2890901044" \
-  --db "./rimworld.db" \
-  --game-path "D:\Steam\steamapps\common\RimWorld"
+$ rim-analyzer add-mod --mod-path "D:\Steam\steamapps\common\RimWorld\Mods\VanillaFireModes" --db "./rimworld.db" --game-path "D:\Steam\steamapps\common\RimWorld"
+```
+```json
+{"status":"success","types":39,"methods":145,"calls":128,"defs":0}
 ```
 
 ---
 
 ### `remove-mod`
 
-Remove all data associated with a mod from the database.
+Remove a mod's data from the database. Idempotent.
 
 ```bash
 rim-analyzer remove-mod --name <name> --db <path>
 ```
 
-| Option | Type | Required | Description |
-|--------|------|----------|-------------|
-| `--name` | string | ✅ | Name of the mod to remove (as shown in About.xml) |
-| `--db` | path | ✅ | Database path |
+| Option | Required | Description |
+|--------|----------|-------------|
+| `--name` | ✅ | Mod name (as in About.xml) |
+| `--db` | ✅ | Database path |
 
-**Output (stdout):**
-```json
-{"status":"success","removed":"Combat Extended"}
-```
-
-**Example:**
 ```bash
-rim-analyzer remove-mod --name "Combat Extended" --db "./rimworld.db"
+$ rim-analyzer remove-mod --name "Vanilla Fire Modes" --db "./rimworld.db"
+```
+```json
+{"status":"success","removed":"Vanilla Fire Modes"}
 ```
 
 ---
 
-## Planned Commands (Not Yet Implemented)
-
 ### `decompile`
 
-On-demand decompilation of a type or method using ICSharpCode.Decompiler.
+On-demand decompilation. Resolves target DLL from database automatically.
 
 ```bash
-rim-analyzer decompile --assembly <path> --type <name> [--method <name>] [--references <path>...]
+rim-analyzer decompile --target <name> --db <path> [--game-path <path>]
 ```
+
+| Option | Required | Description |
+|--------|----------|-------------|
+| `--target` | ✅ | Type FullName, method FullName, or method Signature |
+| `--db` | ✅ | Database path |
+| `--game-path` | | Override game root (fallback: DB metadata) |
+
+Resolution: type FullName → full class; method FullName → all overloads; Signature → single method.
+
+```bash
+$ rim-analyzer decompile --target "Verse.Log" --db "./rimworld.db"
+```
+```json
+{"status":"success","kind":"type","name":"Verse.Log","source":"using System;\nusing ..."}
+```
+
+```bash
+$ rim-analyzer decompile --target "Verse.Log.Error" --db "./rimworld.db"
+```
+```json
+{"status":"success","kind":"method","name":"Verse.Log.Error","overloads":1,"source":"public static void Error..."}
+```
+
+---
 
 ### `harmony`
 
-Analyze Harmony patches declared in a mod's DLL.
+Analyze Harmony patches in a mod. Stateless (no database needed).
 
 ```bash
-rim-analyzer harmony --mod-path <path> [--references <path>...]
+rim-analyzer harmony --mod-path <path> [--game-path <path>]
 ```
+
+| Option | Required | Description |
+|--------|----------|-------------|
+| `--mod-path` | ✅ | Mod root directory or DLL path |
+| `--game-path` | | RimWorld game root (for DLL reference resolution) |
+
+```bash
+$ rim-analyzer harmony --mod-path "D:\Steam\steamapps\common\RimWorld\Mods\VanillaFireModes" --game-path "D:\Steam\steamapps\common\RimWorld"
+```
+```json
+{"status":"success","modName":"Vanilla Fire Modes","patchCount":2,"patches":[{"targetType":"Verse.Verb","targetMethod":"WarmupComplete","patchType":"Prefix","patchClass":"VFM_VanillaFireModes.Patches.Patch_BurstShotCount","patchMethod":"LockCount","priority":null},{"targetType":"Verse.Verb","targetMethod":"TryStartCastOn","patchType":"Prefix","patchClass":"VFM_VanillaFireModes.Patches.Patch_TryStartCastOn","patchMethod":"Prefix","priority":null}]}
+```
+
+> Harmony patches are also stored in DB during `add-mod` for cross-mod query support.
 
 ---
 
 ## Output Conventions
 
-- **stdout**: JSON result (machine-readable)
-- **stderr**: Progress logs and warnings (human-readable)
-- **Exit code**: 0 = success, non-zero = failure
+| Channel | Content |
+|---------|---------|
+| stdout | JSON result |
+| stderr | Progress logs / warnings |
+| Exit code | 0 = success, non-zero = failure |
 
-## Database Sources
+## Recovery
 
-Each entry in the database is tagged with a source:
-
-| Source Type | Example Name | Created By |
-|-------------|-------------|------------|
-| `core` | RimWorld Core | `build` |
-| `dlc` | Royalty, Biotech, ... | `build` |
-| `mod` | Combat Extended | `add-mod` |
+Database inconsistent? Re-run `build` (deletes and recreates), then `add-mod` for each mod.
