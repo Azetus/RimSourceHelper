@@ -11,14 +11,21 @@ public class DefRepository(SqliteConnection connection)
     public int BulkInsert(IEnumerable<DefEntity> defs)
     {
         const string sql = """
-            INSERT INTO Defs (DefName, DefType, Label, ParentDef, SourceFile, MergedJson)
-            VALUES (@DefName, @DefType, @Label, @ParentDef, @SourceFile, @MergedJson)
+            INSERT INTO Defs (DefName, DefType, ParentDef, Label, Description, IsAbstract, RawXml, SourceFile, SourceId)
+            VALUES (@DefName, @DefType, @ParentDef, @Label, @Description, @IsAbstract, @RawXml, @SourceFile, @SourceId)
             """;
 
         using var transaction = connection.BeginTransaction();
         var count = connection.Execute(sql, defs, transaction);
         transaction.Commit();
         return count;
+    }
+
+    // 获取所有已知 defName 集合（用于引用检测）
+    public HashSet<string> GetAllDefNames()
+    {
+        const string sql = "SELECT DefName FROM Defs WHERE DefName IS NOT NULL";
+        return connection.Query<string>(sql).ToHashSet();
     }
 
     // 按名称搜索 Def
@@ -59,5 +66,18 @@ public class DefRepository(SqliteConnection connection)
     {
         const string sql = "SELECT * FROM Defs WHERE DefType = @defType LIMIT @limit OFFSET @offset";
         return connection.Query<DefEntity>(sql, new { defType, limit, offset });
+    }
+
+    // 获取指定 SourceId 的 Def 的 (DefName → Id) 映射（用于引用检测时关联 Id）
+    public Dictionary<string, long> GetDefNameToIdMap(long? sourceId = null)
+    {
+        var sql = sourceId.HasValue
+            ? "SELECT DefName, Id FROM Defs WHERE DefName IS NOT NULL AND SourceId = @sourceId"
+            : "SELECT DefName, Id FROM Defs WHERE DefName IS NOT NULL";
+
+        var map = new Dictionary<string, long>();
+        foreach (var (name, id) in connection.Query<(string DefName, long Id)>(sql, new { sourceId }))
+            map.TryAdd(name, id);
+        return map;
     }
 }

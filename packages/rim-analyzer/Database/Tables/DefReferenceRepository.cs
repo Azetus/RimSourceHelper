@@ -11,8 +11,8 @@ public class DefReferenceRepository(SqliteConnection connection)
     public int BulkInsert(IEnumerable<DefReferenceEntity> references)
     {
         const string sql = """
-            INSERT INTO DefReferences (SourceDefId, TargetDefName, FieldPath)
-            VALUES (@SourceDefId, @TargetDefName, @FieldPath)
+            INSERT INTO DefReferences (SourceDefId, TargetDefName)
+            VALUES (@SourceDefId, @TargetDefName)
             """;
 
         using var transaction = connection.BeginTransaction();

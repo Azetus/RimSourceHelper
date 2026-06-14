@@ -122,12 +122,14 @@ public static class DatabaseInitializer
     private const string CreateDefsSql = """
         CREATE TABLE IF NOT EXISTS Defs (
             Id          INTEGER PRIMARY KEY,
-            DefName     TEXT NOT NULL,
+            DefName     TEXT,
             DefType     TEXT NOT NULL,
-            Label       TEXT,
             ParentDef   TEXT,
+            Label       TEXT,
+            Description TEXT,
+            IsAbstract  INTEGER NOT NULL DEFAULT 0,
+            RawXml      TEXT NOT NULL,
             SourceFile  TEXT,
-            MergedJson  TEXT,
             SourceId    INTEGER NOT NULL REFERENCES Sources(Id)
         );
         CREATE INDEX IF NOT EXISTS idx_defs_name ON Defs(DefName);
@@ -138,8 +140,7 @@ public static class DatabaseInitializer
     private const string CreateDefReferencesSql = """
         CREATE TABLE IF NOT EXISTS DefReferences (
             SourceDefId   INTEGER NOT NULL REFERENCES Defs(Id),
-            TargetDefName TEXT NOT NULL,
-            FieldPath     TEXT
+            TargetDefName TEXT NOT NULL
         );
         CREATE INDEX IF NOT EXISTS idx_defrefs_source ON DefReferences(SourceDefId);
         CREATE INDEX IF NOT EXISTS idx_defrefs_target ON DefReferences(TargetDefName);

@@ -4,6 +4,7 @@ using System.Text.Json;
 using Mono.Cecil;
 using RimAnalyzer.Analysis;
 using RimAnalyzer.Analysis.CallGraph;
+using RimAnalyzer.Analysis.Defs;
 using RimAnalyzer.Analysis.Metadata;
 using RimAnalyzer.Database;
 using RimAnalyzer.Models;
@@ -82,83 +83,84 @@ public static class AddModCommand
         Log($"[INFO] Mod: {mod.Name} (packageId={mod.PackageId})");
         Log($"[INFO] Found {mod.AssemblyPaths.Count} DLLs, {mod.DefFiles.Count} XML files.");
 
-        if (mod.AssemblyPaths.Count == 0)
-        {
-            Log("[WARN] No assemblies found in mod. Only Defs will be processed (not yet implemented).");
-            return new BuildResult { Status = "success", Types = 0, Methods = 0, Calls = 0, Defs = 0 };
-        }
-
-        // 加载 Mod DLL（引用游戏 Managed 目录做 Resolve）
+        // 打开已有数据库
         var gameResolver = new GamePathResolver(options.GamePath);
-        var assemblies = AssemblyLoader.Load(
-            mod.AssemblyPaths.ToArray(),
-            [gameResolver.ManagedDir],
-            Log);
+        using var db = DatabaseContext.Open(options.Database, force: false);
 
-        if (assemblies.Count == 0)
-            throw new InvalidOperationException("No mod assemblies were loaded successfully.");
-
-        try
+        // 如果已存在同名 Source，先清除旧数据（幂等操作）
+        var existing = db.Sources.FindByName(mod.Name);
+        if (existing is not null)
         {
-            // 元数据收集
-            var collection = MetadataCollector.Collect(assemblies, Log);
-
-            // 打开已有数据库（不覆盖）
-            using var db = DatabaseContext.Open(options.Database, force: false);
-
-            // 如果已存在同名 Source，先清除旧数据（幂等操作）
-            var existing = db.Sources.FindByName(mod.Name);
-            if (existing is not null)
-            {
-                Log($"[INFO] Source '{mod.Name}' already exists, replacing...");
-                RemoveSourceData(db, existing.Id);
-            }
-
-            // 创建 Source 记录
-            var modSource = new SourceEntity
-            {
-                Name = mod.Name,
-                Type = "mod",
-                PackageId = mod.PackageId,
-                AssemblyPath = mod.AssemblyPaths.FirstOrDefault(),
-                RootPath = mod.ModRoot
-            };
-            var sourceId = db.Sources.Insert(modSource);
-            Log($"[INFO] Created source: {modSource.Name} (id={sourceId})");
-
-            // 写入元数据
-            var writeResult = MetadataWriter.Write(db, collection.Types, sourceId, Log);
-
-            // 构建 MethodDefinition → Id 映射（包含已有数据库中的方法用于跨 Mod 调用图）
-            var sigToId = db.Methods.GetSignatureToIdMap();
-            var methodDefToId = new Dictionary<MethodDefinition, long>();
-            foreach (var (def, entity) in collection.MethodMap)
-            {
-                if (sigToId.TryGetValue(entity.Signature, out var id))
-                    methodDefToId[def] = id;
-            }
-            Log($"[INFO] Built method mapping: {methodDefToId.Count} entries.");
-
-            // 调用图分析（Mod 内部调用 + 对 Core 的调用）
-            var callPairs = CallGraphAnalyzer.Analyze(assemblies, methodDefToId, Log);
-            var callCount = CallGraphWriter.Write(db, callPairs, Log);
-
-            Log("[INFO] Mod added successfully.");
-
-            return new BuildResult
-            {
-                Status = "success",
-                Types = writeResult.Types,
-                Methods = writeResult.Methods,
-                Calls = callCount,
-                Defs = 0
-            };
+            Log($"[INFO] Source '{mod.Name}' already exists, replacing...");
+            RemoveSourceData(db, existing.Id);
         }
-        finally
+
+        // 创建 Source 记录
+        var modSource = new SourceEntity
         {
-            foreach (var asm in assemblies)
-                asm.Dispose();
+            Name = mod.Name,
+            Type = "mod",
+            PackageId = mod.PackageId,
+            AssemblyPath = mod.AssemblyPaths.FirstOrDefault(),
+            RootPath = mod.ModRoot
+        };
+        var sourceId = db.Sources.Insert(modSource);
+        Log($"[INFO] Created source: {modSource.Name} (id={sourceId})");
+
+        int typesCount = 0, methodsCount = 0, callCount = 0;
+
+        // 代码分析（仅当 Mod 有 DLL 时）
+        if (mod.AssemblyPaths.Count > 0)
+        {
+            var assemblies = AssemblyLoader.Load(
+                mod.AssemblyPaths.ToArray(),
+                [gameResolver.ManagedDir],
+                Log);
+
+            try
+            {
+                if (assemblies.Count > 0)
+                {
+                    var collection = MetadataCollector.Collect(assemblies, Log);
+                    var writeResult = MetadataWriter.Write(db, collection.Types, sourceId, Log);
+                    typesCount = writeResult.Types;
+                    methodsCount = writeResult.Methods;
+
+                    // 构建 MethodDefinition → Id 映射
+                    var sigToId = db.Methods.GetSignatureToIdMap();
+                    var methodDefToId = new Dictionary<MethodDefinition, long>();
+                    foreach (var (def, entity) in collection.MethodMap)
+                    {
+                        if (sigToId.TryGetValue(entity.Signature, out var id))
+                            methodDefToId[def] = id;
+                    }
+                    Log($"[INFO] Built method mapping: {methodDefToId.Count} entries.");
+
+                    var callPairs = CallGraphAnalyzer.Analyze(assemblies, methodDefToId, Log);
+                    callCount = CallGraphWriter.Write(db, callPairs, Log);
+                }
+            }
+            finally
+            {
+                foreach (var asm in assemblies)
+                    asm.Dispose();
+            }
         }
+
+        // Defs 解析（始终执行）
+        var modDefs = DefParser.ParseFiles(mod.DefFiles, mod.ModRoot, sourceId, Log);
+        var defResult = DefWriter.Write(db, modDefs, Log);
+
+        Log("[INFO] Mod added successfully.");
+
+        return new BuildResult
+        {
+            Status = "success",
+            Types = typesCount,
+            Methods = methodsCount,
+            Calls = callCount,
+            Defs = defResult.Defs
+        };
     }
 
     // 删除指定 Source 的所有关联数据

@@ -4,6 +4,7 @@ using System.Text.Json;
 using Mono.Cecil;
 using RimAnalyzer.Analysis;
 using RimAnalyzer.Analysis.CallGraph;
+using RimAnalyzer.Analysis.Defs;
 using RimAnalyzer.Analysis.Metadata;
 using RimAnalyzer.Database;
 using RimAnalyzer.Models;
@@ -126,10 +127,30 @@ public static class BuildCommand
             var callPairs = CallGraphAnalyzer.Analyze(assemblies, methodDefToId, Log);
             var callCount = CallGraphWriter.Write(db, callPairs, Log);
 
-            // 检测 DLC（Defs 解析 TODO）
-            var dlcs = resolver.DetectDlcs();
-            if (dlcs.Count > 0)
-                Log($"[INFO] Detected DLCs: {string.Join(", ", dlcs)} (Defs parsing not yet implemented)");
+            // 阶段6：Defs 解析（Core + DLCs）
+            var allDefs = new List<DefEntity>();
+
+            // Core Defs 使用已有的 coreSource
+            var coreDefsPath = Path.Combine(resolver.DataDir, "Core", "Defs");
+            allDefs.AddRange(DefParser.ParseDirectory(coreDefsPath, resolver.GameRoot, sourceId, Log));
+
+            // 为每个 DLC 创建 Source 并解析 Defs
+            foreach (var dlcName in resolver.DetectDlcs())
+            {
+                var dlcSource = new SourceEntity
+                {
+                    Name = dlcName,
+                    Type = "dlc",
+                    PackageId = $"Ludeon.RimWorld.{dlcName}",
+                    RootPath = Path.Combine(resolver.DataDir, dlcName)
+                };
+                var dlcSourceId = db.Sources.Insert(dlcSource);
+
+                var dlcDefsPath = Path.Combine(resolver.DataDir, dlcName, "Defs");
+                allDefs.AddRange(DefParser.ParseDirectory(dlcDefsPath, resolver.GameRoot, dlcSourceId, Log));
+            }
+
+            var defResult = DefWriter.Write(db, allDefs, Log);
 
             Log("[INFO] Build complete.");
 
@@ -139,7 +160,7 @@ public static class BuildCommand
                 Types = writeResult.Types,
                 Methods = writeResult.Methods,
                 Calls = callCount,
-                Defs = 0
+                Defs = defResult.Defs
             };
         }
         finally
