@@ -1,10 +1,10 @@
 using System.CommandLine;
-using System.CommandLine.Parsing;
 using System.Text.Json;
 using Mono.Cecil;
 using RimAnalyzer.Analysis;
 using RimAnalyzer.Analysis.CallGraph;
 using RimAnalyzer.Analysis.Defs;
+using RimAnalyzer.Analysis.Harmony;
 using RimAnalyzer.Analysis.Metadata;
 using RimAnalyzer.Database;
 using RimAnalyzer.Models;
@@ -138,6 +138,15 @@ public static class AddModCommand
 
                     var callPairs = CallGraphAnalyzer.Analyze(assemblies, methodDefToId, Log);
                     callCount = CallGraphWriter.Write(db, callPairs, Log);
+
+                    // Harmony Patch 分析
+                    var patches = HarmonyAnalyzer.Analyze(assemblies, Log);
+                    foreach (var p in patches) p.SourceId = sourceId;
+                    if (patches.Count > 0)
+                    {
+                        var patchCount = db.HarmonyPatches.BulkInsert(patches);
+                        Log($"[INFO] Inserted {patchCount} Harmony patches.");
+                    }
                 }
             }
             finally
@@ -167,6 +176,7 @@ public static class AddModCommand
     private static void RemoveSourceData(DatabaseContext db, long sourceId)
     {
         var conn = db.Connection;
+        Dapper.SqlMapper.Execute(conn, "DELETE FROM HarmonyPatches WHERE SourceId = @sourceId", new { sourceId });
         Dapper.SqlMapper.Execute(conn, "DELETE FROM Calls WHERE CallerMethodId IN (SELECT Id FROM Methods WHERE SourceId = @sourceId) OR CalleeMethodId IN (SELECT Id FROM Methods WHERE SourceId = @sourceId)", new { sourceId });
         Dapper.SqlMapper.Execute(conn, "DELETE FROM Inheritance WHERE ParentTypeId IN (SELECT Id FROM Types WHERE SourceId = @sourceId) OR ChildTypeId IN (SELECT Id FROM Types WHERE SourceId = @sourceId)", new { sourceId });
         Dapper.SqlMapper.Execute(conn, "DELETE FROM DefReferences WHERE SourceDefId IN (SELECT Id FROM Defs WHERE SourceId = @sourceId)", new { sourceId });

@@ -1,5 +1,4 @@
 using System.CommandLine;
-using System.CommandLine.Parsing;
 using System.Text.Json;
 using Dapper;
 using RimAnalyzer.Database;
@@ -64,6 +63,7 @@ public static class RemoveModCommand
         var sourceId = source.Id;
 
         // 按依赖顺序删除（先删引用关系，再删实体）
+        conn.Execute("DELETE FROM HarmonyPatches WHERE SourceId = @sourceId", new { sourceId });
         conn.Execute("DELETE FROM Calls WHERE CallerMethodId IN (SELECT Id FROM Methods WHERE SourceId = @sourceId) OR CalleeMethodId IN (SELECT Id FROM Methods WHERE SourceId = @sourceId)", new { sourceId });
         conn.Execute("DELETE FROM Inheritance WHERE ParentTypeId IN (SELECT Id FROM Types WHERE SourceId = @sourceId) OR ChildTypeId IN (SELECT Id FROM Types WHERE SourceId = @sourceId)", new { sourceId });
         conn.Execute("DELETE FROM DefReferences WHERE SourceDefId IN (SELECT Id FROM Defs WHERE SourceId = @sourceId)", new { sourceId });

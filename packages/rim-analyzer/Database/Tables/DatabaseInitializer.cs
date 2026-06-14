@@ -17,6 +17,7 @@ public static class DatabaseInitializer
         connection.Execute(CreateCallsSql);
         connection.Execute(CreateDefsSql);
         connection.Execute(CreateDefReferencesSql);
+        connection.Execute(CreateHarmonyPatchesSql);
         connection.Execute(CreateMetadataSql);
     }
 
@@ -144,6 +145,22 @@ public static class DatabaseInitializer
         );
         CREATE INDEX IF NOT EXISTS idx_defrefs_source ON DefReferences(SourceDefId);
         CREATE INDEX IF NOT EXISTS idx_defrefs_target ON DefReferences(TargetDefName);
+        """;
+
+    private const string CreateHarmonyPatchesSql = """
+        CREATE TABLE IF NOT EXISTS HarmonyPatches (
+            Id            INTEGER PRIMARY KEY,
+            TargetType    TEXT NOT NULL,
+            TargetMethod  TEXT,
+            PatchType     TEXT NOT NULL,
+            PatchClass    TEXT NOT NULL,
+            PatchMethod   TEXT NOT NULL,
+            Priority      TEXT,
+            SourceId      INTEGER NOT NULL REFERENCES Sources(Id)
+        );
+        CREATE INDEX IF NOT EXISTS idx_harmony_target_type ON HarmonyPatches(TargetType);
+        CREATE INDEX IF NOT EXISTS idx_harmony_target_method ON HarmonyPatches(TargetType, TargetMethod);
+        CREATE INDEX IF NOT EXISTS idx_harmony_source ON HarmonyPatches(SourceId);
         """;
 
     private const string CreateMetadataSql = """

@@ -11,6 +11,8 @@ class Program
         rootCommand.Add(BuildCommand.Create());
         rootCommand.Add(AddModCommand.Create());
         rootCommand.Add(RemoveModCommand.Create());
+        rootCommand.Add(DecompileCommand.Create());
+        rootCommand.Add(HarmonyCommand.Create());
         return rootCommand.Parse(args).Invoke();
     }
 }

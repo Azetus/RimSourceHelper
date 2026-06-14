@@ -1,5 +1,4 @@
 using System.CommandLine;
-using System.CommandLine.Parsing;
 using System.Text.Json;
 using Mono.Cecil;
 using RimAnalyzer.Analysis;
@@ -102,6 +101,9 @@ public static class BuildCommand
             };
             var sourceId = db.Sources.Insert(coreSource);
             Log($"[INFO] Created source: {coreSource.Name} (id={sourceId})");
+
+            // 存储 game-path 供 decompile 命令使用
+            db.Metadata.Set("game_path", resolver.GameRoot);
 
             // 写入元数据
             var writeResult = MetadataWriter.Write(db, collection.Types, sourceId, Log);

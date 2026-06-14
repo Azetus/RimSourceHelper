@@ -1,8 +1,6 @@
 using System.CommandLine;
-using System.CommandLine.Parsing;
 using System.Text.Json;
 using Dapper;
-using RimAnalyzer.Analysis;
 using RimAnalyzer.Analysis.Decompiler;
 using RimAnalyzer.Database;
 using RimAnalyzer.Models;

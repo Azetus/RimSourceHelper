@@ -17,6 +17,7 @@ public class DatabaseContext : IDisposable
     public CallRepository Calls { get; }
     public DefRepository Defs { get; }
     public DefReferenceRepository DefReferences { get; }
+    public HarmonyPatchRepository HarmonyPatches { get; }
     public MetadataRepository Metadata { get; }
 
     private DatabaseContext(SqliteConnection connection)
@@ -31,6 +32,7 @@ public class DatabaseContext : IDisposable
         Calls = new CallRepository(connection);
         Defs = new DefRepository(connection);
         DefReferences = new DefReferenceRepository(connection);
+        HarmonyPatches = new HarmonyPatchRepository(connection);
         Metadata = new MetadataRepository(connection);
     }
 
