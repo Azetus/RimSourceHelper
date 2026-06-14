@@ -11,7 +11,7 @@ using RimAnalyzer.Models;
 
 namespace RimAnalyzer.Commands;
 
-// build 子命令：从游戏根目录分析 Core + DLC 并构建知识库
+// build 子命令：从游戏根目录分析 Core + DLC，始终全量重建数据库
 public static class BuildCommand
 {
     public static Command Create()
@@ -28,11 +28,6 @@ public static class BuildCommand
             Required = true
         };
 
-        var forceOption = new Option<bool>("--force")
-        {
-            Description = "Force overwrite existing database"
-        };
-
         var verboseOption = new Option<bool>("--verbose")
         {
             Description = "Enable verbose logging"
@@ -42,7 +37,6 @@ public static class BuildCommand
         {
             gamePathOption,
             outputOption,
-            forceOption,
             verboseOption
         };
 
@@ -52,7 +46,6 @@ public static class BuildCommand
             {
                 GamePath = parseResult.GetValue(gamePathOption)!,
                 Output = parseResult.GetValue(outputOption)!,
-                Force = parseResult.GetValue(forceOption),
                 Verbose = parseResult.GetValue(verboseOption)
             };
 
@@ -95,8 +88,8 @@ public static class BuildCommand
             // 元数据收集
             var collection = MetadataCollector.Collect(assemblies, Log);
 
-            // 打开数据库
-            using var db = DatabaseContext.Open(options.Output, options.Force);
+            // 始终全量重建：删除已有 DB 并创建新数据库
+            using var db = DatabaseContext.Open(options.Output, force: true);
 
             // 创建 Source 记录
             var coreSource = new SourceEntity
@@ -127,14 +120,12 @@ public static class BuildCommand
             var callPairs = CallGraphAnalyzer.Analyze(assemblies, methodDefToId, Log);
             var callCount = CallGraphWriter.Write(db, callPairs, Log);
 
-            // 阶段6：Defs 解析（Core + DLCs）
+            // Defs 解析（Core + DLCs）
             var allDefs = new List<DefEntity>();
 
-            // Core Defs 使用已有的 coreSource
             var coreDefsPath = Path.Combine(resolver.DataDir, "Core", "Defs");
             allDefs.AddRange(DefParser.ParseDirectory(coreDefsPath, resolver.GameRoot, sourceId, Log));
 
-            // 为每个 DLC 创建 Source 并解析 Defs
             foreach (var dlcName in resolver.DetectDlcs())
             {
                 var dlcSource = new SourceEntity
