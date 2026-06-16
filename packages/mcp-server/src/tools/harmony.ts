@@ -13,7 +13,7 @@ export async function findHarmonyPatches(args: Record<string, unknown>, config: 
   return withDatabase(config.databasePath, (db) => {
     let sql = `SELECT h.TargetType, h.TargetMethod, h.PatchType, h.PatchClass, h.PatchMethod, h.Priority, s.Name as source
                FROM HarmonyPatches h JOIN Sources s ON h.SourceId = s.Id WHERE 1=1`;
-    const params: unknown[] = [];
+    const params: (string | number)[] = [];
 
     if (targetType) {
       sql += " AND h.TargetType = ?";

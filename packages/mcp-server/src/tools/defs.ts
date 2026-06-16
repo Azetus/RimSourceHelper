@@ -10,7 +10,7 @@ export async function searchDefs(args: Record<string, unknown>, config: Config) 
   return withDatabase(config.databasePath, (db) => {
     let sql = `SELECT d.DefName, d.DefType, d.Label, d.IsAbstract, d.ParentDef, s.Name as source
                FROM Defs d JOIN Sources s ON d.SourceId = s.Id WHERE 1=1`;
-    const params: unknown[] = [];
+    const params: (string | number)[] = [];
 
     if (query) {
       sql += " AND d.DefName LIKE ?";

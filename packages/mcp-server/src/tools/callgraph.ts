@@ -1,4 +1,4 @@
-import type Database from "better-sqlite3";
+import type { DatabaseSync, StatementSync } from "node:sqlite";
 import type { Config } from "../config.js";
 import { withDatabase } from "../utils/database.js";
 
@@ -93,7 +93,7 @@ interface TreeNode {
 }
 
 // 将方法名（FullName 或 Signature）解析为数据库 ID 列表
-function resolveMethodIds(db: Database.Database, method: string): number[] {
+function resolveMethodIds(db: DatabaseSync, method: string): number[] {
   // 优先 FullName 匹配（可能有多个重载）
   const byFullName = db.prepare("SELECT Id FROM Methods WHERE FullName = ?").all(method) as { Id: number }[];
   if (byFullName.length > 0) return byFullName.map(r => r.Id);
@@ -111,8 +111,8 @@ function buildTreeNode(
   maxDepth: number,
   depth: number,
   pathVisited: Set<number>,
-  neighborStmt: Database.Statement,
-  infoStmt: Database.Statement
+  neighborStmt: StatementSync,
+  infoStmt: StatementSync
 ): TreeNode {
   const info = infoStmt.get(methodId) as { FullName: string; Signature: string };
 

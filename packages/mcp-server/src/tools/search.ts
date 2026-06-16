@@ -1,4 +1,4 @@
-import type Database from "better-sqlite3";
+import type { DatabaseSync, StatementSync } from "node:sqlite";
 import type { Config } from "../config.js";
 import { withDatabase } from "../utils/database.js";
 import { runAnalyzer } from "../utils/analyzer.js";
@@ -132,7 +132,7 @@ export async function listTypeMembers(args: Record<string, unknown>, config: Con
 
 // --- 内部辅助函数 ---
 
-function gatherTypeInfo(db: Database.Database, type: Record<string, unknown>) {
+function gatherTypeInfo(db: DatabaseSync, type: Record<string, unknown>) {
   const typeId = type.Id as number;
   const typeFullName = type.FullName as string;
 
@@ -183,7 +183,7 @@ function gatherTypeInfo(db: Database.Database, type: Record<string, unknown>) {
   };
 }
 
-function gatherMethodInfo(db: Database.Database, methods: Record<string, unknown>[]) {
+function gatherMethodInfo(db: DatabaseSync, methods: Record<string, unknown>[]) {
   const primary = methods[0];
   const methodId = primary.Id as number;
   const methodFullName = primary.FullName as string;
