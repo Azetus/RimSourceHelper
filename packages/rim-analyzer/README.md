@@ -2,13 +2,26 @@
 
 RimWorld DLL/XML analysis tool. Builds structured knowledge databases from game assemblies and Defs using Mono.Cecil.
 
+## Prerequisites
+
+- **.NET 10 Runtime** (or later) — required to run the analyzer. RimWorld mod developers typically already have the .NET SDK installed.
+
+## Build
+
+```bash
+cd packages/rim-analyzer
+dotnet publish -c Release    # Output: release/rim-analyzer/
+```
+
+Run via: `dotnet release/rim-analyzer/rim-analyzer.dll <command> [options]`
+
 ## Typical Workflow
 
 ```bash
-rim-analyzer build --game-path "D:\Steam\steamapps\common\RimWorld" --output "./rimworld.db"
-rim-analyzer add-mod --mod-path "D:\Steam\steamapps\common\RimWorld\Mods\VanillaFireModes" --db "./rimworld.db" --game-path "D:\Steam\steamapps\common\RimWorld"
-rim-analyzer decompile --target "Verse.Pawn" --db "./rimworld.db"
-rim-analyzer harmony --mod-path "D:\Steam\steamapps\common\RimWorld\Mods\VanillaFireModes" --game-path "D:\Steam\steamapps\common\RimWorld"
+dotnet rim-analyzer.dll build --game-path "D:\Steam\steamapps\common\RimWorld" --output "./rimworld.db"
+dotnet rim-analyzer.dll add-mod --mod-path "D:\Steam\steamapps\common\RimWorld\Mods\VanillaFireModes" --db "./rimworld.db" --game-path "D:\Steam\steamapps\common\RimWorld"
+dotnet rim-analyzer.dll decompile --target "Verse.Pawn" --db "./rimworld.db"
+dotnet rim-analyzer.dll harmony --mod-path "D:\Steam\steamapps\common\RimWorld\Mods\VanillaFireModes" --game-path "D:\Steam\steamapps\common\RimWorld"
 ```
 
 ## Commands

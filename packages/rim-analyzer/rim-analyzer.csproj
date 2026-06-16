@@ -6,6 +6,11 @@
         <RootNamespace>RimAnalyzer</RootNamespace>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
+        <UseAppHost>false</UseAppHost>
+    </PropertyGroup>
+
+    <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+        <PublishDir>../../release/rim-analyzer/</PublishDir>
     </PropertyGroup>
 
     <ItemGroup>

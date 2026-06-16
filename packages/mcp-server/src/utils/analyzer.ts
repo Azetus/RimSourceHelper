@@ -1,9 +1,9 @@
 import { spawn } from "child_process";
 
-// 调用 rim-analyzer 子进程，返回 stdout 内容（JSON 字符串）
+// 通过 dotnet 调用 rim-analyzer DLL，返回 stdout 内容（JSON 字符串）
 export function runAnalyzer(analyzerPath: string, args: string[]): Promise<string> {
   return new Promise((resolve, reject) => {
-    const proc = spawn(analyzerPath, args, { stdio: ["ignore", "pipe", "pipe"] });
+    const proc = spawn("dotnet", [analyzerPath, ...args], { stdio: ["ignore", "pipe", "pipe"] });
     let stdout = "";
     let stderr = "";
 
