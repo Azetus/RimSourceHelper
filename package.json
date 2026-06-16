@@ -1,22 +1,28 @@
 {
   "name": "rimsourcehelper",
   "version": "1.0.0",
-  "description": "",
+  "description": "RimWorld modding knowledge base - MCP Server + DLL Analyzer",
   "private": true,
-  "main": "index.js",
+  "type": "module",
   "scripts": {
-    "build": "pnpm -r build",
-    "dev:mcp": "pnpm --filter rimsource-helper-mcp dev"
+    "build": "pnpm run build:analyzer && pnpm run build:mcp && pnpm run build:copy",
+    "build:analyzer": "dotnet publish packages/rim-analyzer -c Release",
+    "build:mcp": "esbuild packages/mcp-server/src/index.ts --bundle --platform=node --format=esm --outfile=release/index.js",
+    "build:copy": "node scripts/copy-release-files.mjs",
+    "typecheck": "pnpm --filter rimsourcehelper-mcp exec tsc --noEmit",
+    "dev:mcp": "pnpm --filter rimsourcehelper-mcp dev"
   },
   "keywords": [],
   "author": "Aliza",
   "license": "ISC",
+  "devDependencies": {
+    "esbuild": "^0.25.0"
+  },
   "devEngines": {
     "packageManager": {
       "name": "pnpm",
       "version": "^11.5.2",
       "onFail": "download"
     }
-  },
-  "type": "module"
+  }
 }

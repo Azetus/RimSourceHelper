@@ -1,0 +1,5 @@
+{
+  "gamePath": "<Enter your RimWorld installation directory here>",
+  "databasePath": "./rimworld.db",
+  "analyzerPath": "./rim-analyzer/rim-analyzer.dll"
+}

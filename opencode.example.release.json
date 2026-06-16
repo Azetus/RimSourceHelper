@@ -1,0 +1,10 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "rimworld": {
+      "type": "local",
+      "command": ["node", "<Enter the absolute path to index.js here>"],
+      "enabled": true
+    }
+  }
+}
