@@ -1,5 +1,6 @@
 {
   "compilerOptions": {
+    "types": ["node"],
     "target": "ES2022",                 // 编译后的 JavaScript 版本 (ES2022 支持现代特性)
     "module": "NodeNext",               // 模块格式，与 Node.js 的 ES 模块兼容
     "moduleResolution": "NodeNext",     // 模块解析策略，适配 NodeNext 模块系统

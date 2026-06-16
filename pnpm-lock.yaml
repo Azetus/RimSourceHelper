@@ -205,7 +205,11 @@ settings:
 
 importers:
 
-  .: {}
+  .:
+    devDependencies:
+      '@types/node':
+        specifier: ^22.19.20
+        version: 22.19.20
 
   packages/mcp-server:
     dependencies:

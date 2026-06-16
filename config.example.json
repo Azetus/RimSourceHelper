@@ -1,0 +1,5 @@
+{
+  "gamePath": "D:/Steam/steamapps/common/RimWorld",
+  "databasePath": "./rimworld.db",
+  "analyzerPath": "./packages/rim-analyzer/bin/Debug/net10.0/rim-analyzer.exe"
+}
