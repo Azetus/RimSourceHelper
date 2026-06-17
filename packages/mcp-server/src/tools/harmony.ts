@@ -13,7 +13,7 @@ export async function findHarmonyPatches(args: Record<string, unknown>, config: 
   }
 
   const patches = withDatabase(config.databasePath, (db) => {
-    let sql = `SELECT h.TargetType, h.TargetMethod, h.PatchType, h.PatchClass, h.PatchMethod, h.Priority, s.Name as source
+    let sql = `SELECT h.TargetType, h.TargetMethod, h.PatchType, h.PatchClass, h.PatchMethod, h.Priority, s.Name as Source
                FROM HarmonyPatches h JOIN Sources s ON h.SourceId = s.Id WHERE 1=1`;
     const params: (string | number)[] = [];
 
@@ -41,11 +41,11 @@ export async function listHarmonyPatches(args: Record<string, unknown>, config: 
 
   const patches = withDatabase(config.databasePath, (db) => {
     const sql = source
-      ? `SELECT h.TargetType, h.TargetMethod, h.PatchType, h.PatchClass, h.PatchMethod, h.Priority, s.Name as source
+      ? `SELECT h.TargetType, h.TargetMethod, h.PatchType, h.PatchClass, h.PatchMethod, h.Priority, s.Name as Source
          FROM HarmonyPatches h JOIN Sources s ON h.SourceId = s.Id
          WHERE s.Name = ?
          ORDER BY h.TargetType, h.TargetMethod LIMIT ?`
-      : `SELECT h.TargetType, h.TargetMethod, h.PatchType, h.PatchClass, h.PatchMethod, h.Priority, s.Name as source
+      : `SELECT h.TargetType, h.TargetMethod, h.PatchType, h.PatchClass, h.PatchMethod, h.Priority, s.Name as Source
          FROM HarmonyPatches h JOIN Sources s ON h.SourceId = s.Id
          ORDER BY s.Name, h.TargetType, h.TargetMethod LIMIT ?`;
     const params: (string | number)[] = source ? [source, limit] : [limit];

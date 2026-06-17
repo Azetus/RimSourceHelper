@@ -10,7 +10,7 @@ export async function searchDefs(args: Record<string, unknown>, config: Config) 
   const limit = (args.limit as number) ?? 100;
 
   const defs = withDatabase(config.databasePath, (db) => {
-    let sql = `SELECT d.DefName, d.DefType, d.Label, d.IsAbstract, d.ParentDef, s.Name as source
+    let sql = `SELECT d.DefName, d.DefType, d.Label, d.IsAbstract, d.ParentDef, s.Name as Source
                FROM Defs d JOIN Sources s ON d.SourceId = s.Id WHERE 1=1`;
     const params: (string | number)[] = [];
 
@@ -42,8 +42,8 @@ export async function getDefDetails(args: Record<string, unknown>, config: Confi
 
   const def = withDatabase(config.databasePath, (db) => {
     const sql = defType
-      ? `SELECT d.*, s.Name as source FROM Defs d JOIN Sources s ON d.SourceId = s.Id WHERE d.DefName = ? AND d.DefType = ?`
-      : `SELECT d.*, s.Name as source FROM Defs d JOIN Sources s ON d.SourceId = s.Id WHERE d.DefName = ?`;
+      ? `SELECT d.*, s.Name as Source FROM Defs d JOIN Sources s ON d.SourceId = s.Id WHERE d.DefName = ? AND d.DefType = ?`
+      : `SELECT d.*, s.Name as Source FROM Defs d JOIN Sources s ON d.SourceId = s.Id WHERE d.DefName = ?`;
     const params = defType ? [defName, defType] : [defName];
     return db.prepare(sql).get(...params) as unknown as DefDetails | undefined;
   });
@@ -59,7 +59,7 @@ export async function getDefDetails(args: Record<string, unknown>, config: Confi
 export async function listDefTypes(args: Record<string, unknown>, config: Config) {
   const types = withDatabase(config.databasePath, (db) => {
     return db.prepare(
-      "SELECT DefType, COUNT(*) as count FROM Defs GROUP BY DefType ORDER BY count DESC"
+      "SELECT DefType, COUNT(*) as Count FROM Defs GROUP BY DefType ORDER BY Count DESC"
     ).all() as unknown as DefTypeCount[];
   });
 
@@ -73,7 +73,7 @@ export async function findDefReferences(args: Record<string, unknown>, config: C
 
   const refs = withDatabase(config.databasePath, (db) => {
     return db.prepare(
-      `SELECT d.DefName, d.DefType, d.Label, s.Name as source
+      `SELECT d.DefName, d.DefType, d.Label, s.Name as Source
        FROM Defs d
        JOIN DefReferences r ON d.Id = r.SourceDefId
        JOIN Sources s ON d.SourceId = s.Id

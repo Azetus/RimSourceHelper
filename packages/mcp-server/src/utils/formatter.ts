@@ -9,18 +9,18 @@ import type {
 export function formatFindTarget(results: TargetSearchResult[]): string {
   if (results.length === 0) return "No results found.";
 
-  const types = results.filter(r => r.kind === "type");
-  const methods = results.filter(r => r.kind === "method");
+  const types = results.filter(r => r.Kind === "type");
+  const methods = results.filter(r => r.Kind === "method");
   const lines: string[] = [];
 
   if (types.length > 0) {
     lines.push(`## Types (${types.length})`);
-    for (const t of types) lines.push(`- \`${t.FullName}\` — ${t.source}`);
+    for (const t of types) lines.push(`- \`${t.FullName}\` — ${t.Source}`);
   }
   if (methods.length > 0) {
     if (types.length > 0) lines.push("");
     lines.push(`## Methods (${methods.length})`);
-    for (const m of methods) lines.push(`- \`${m.FullName}\` — ${m.source}`);
+    for (const m of methods) lines.push(`- \`${m.FullName}\` — ${m.Source}`);
   }
 
   return lines.join("\n");
@@ -29,41 +29,41 @@ export function formatFindTarget(results: TargetSearchResult[]): string {
 // --- get_target_info (type) ---
 export function formatTypeInfo(info: TypeInfoResult): string {
   const lines: string[] = [];
-  lines.push(`# ${info.fullName}`);
+  lines.push(`# ${info.FullName}`);
 
   const mods: string[] = [];
-  if (info.accessibility) mods.push(info.accessibility);
-  if (info.isAbstract && !info.isInterface) mods.push("abstract");
-  if (info.isSealed) mods.push("sealed");
-  if (info.isInterface) mods.push("interface");
-  if (info.isEnum) mods.push("enum");
+  if (info.Accessibility) mods.push(info.Accessibility);
+  if (info.IsAbstract && !info.IsInterface) mods.push("abstract");
+  if (info.IsSealed) mods.push("sealed");
+  if (info.IsInterface) mods.push("interface");
+  if (info.IsEnum) mods.push("enum");
   if (mods.length > 0) lines.push(`- Modifiers: ${mods.join(" ")}`);
 
-  if (info.baseType && info.baseType !== "System.Object") lines.push(`- Base: \`${info.baseType}\``);
+  if (info.BaseType && info.BaseType !== "System.Object") lines.push(`- Base: \`${info.BaseType}\``);
 
-  const interfaces = info.parents.filter(p => p.IsInterface);
+  const interfaces = info.Parents.filter(p => p.IsInterface);
   if (interfaces.length > 0) lines.push(`- Implements: ${interfaces.map(i => `\`${i.FullName}\``).join(", ")}`);
 
-  lines.push(`- Source: ${info.source.Name} (${info.source.Type})`);
-  lines.push(`- Members: ${info.memberCounts.methods} methods, ${info.memberCounts.fields} fields, ${info.memberCounts.properties} properties`);
+  lines.push(`- Source: ${info.Source.Name} (${info.Source.Type})`);
+  lines.push(`- Members: ${info.MemberCounts.Methods} methods, ${info.MemberCounts.Fields} fields, ${info.MemberCounts.Properties} properties`);
 
-  if (info.children.length > 0) {
-    lines.push(`- Children: ${info.children.map(c => `\`${c.FullName}\``).join(", ")}`);
+  if (info.Children.length > 0) {
+    lines.push(`- Children: ${info.Children.map(c => `\`${c.FullName}\``).join(", ")}`);
   }
 
-  if (info.harmonyPatches.length > 0) {
+  if (info.HarmonyPatches.length > 0) {
     lines.push("");
-    lines.push(`## Harmony Patches (${info.harmonyPatches.length})`);
-    for (const p of info.harmonyPatches) {
-      lines.push(`- **${p.PatchType}** on \`${p.TargetMethod ?? "(class)"}\` by \`${p.PatchClass}.${p.PatchMethod}\` — ${p.source}`);
+    lines.push(`## Harmony Patches (${info.HarmonyPatches.length})`);
+    for (const p of info.HarmonyPatches) {
+      lines.push(`- **${p.PatchType}** on \`${p.TargetMethod ?? "(class)"}\` by \`${p.PatchClass}.${p.PatchMethod}\` — ${p.Source}`);
     }
   }
 
-  if (info.decompiled) {
+  if (info.Decompiled) {
     lines.push("");
     lines.push("## Source");
     lines.push("```csharp");
-    lines.push(info.decompiled);
+    lines.push(info.Decompiled);
     lines.push("```");
   }
 
@@ -73,50 +73,50 @@ export function formatTypeInfo(info: TypeInfoResult): string {
 // --- get_target_info (method) ---
 export function formatMethodInfo(info: MethodInfoResult): string {
   const lines: string[] = [];
-  lines.push(`# ${info.fullName}`);
-  lines.push(`- Signature: \`${info.signature}\``);
+  lines.push(`# ${info.FullName}`);
+  lines.push(`- Signature: \`${info.Signature}\``);
 
   const mods: string[] = [];
-  if (info.accessibility) mods.push(info.accessibility);
-  if (info.isStatic) mods.push("static");
-  if (info.isVirtual) mods.push("virtual");
-  if (info.isAbstract) mods.push("abstract");
+  if (info.Accessibility) mods.push(info.Accessibility);
+  if (info.IsStatic) mods.push("static");
+  if (info.IsVirtual) mods.push("virtual");
+  if (info.IsAbstract) mods.push("abstract");
   if (mods.length > 0) lines.push(`- Modifiers: ${mods.join(" ")}`);
 
-  lines.push(`- Returns: \`${info.returnType}\``);
-  if (info.parentType) lines.push(`- Parent: \`${info.parentType.FullName}\``);
-  lines.push(`- Source: ${info.source.Name} (${info.source.Type})`);
+  lines.push(`- Returns: \`${info.ReturnType}\``);
+  if (info.ParentType) lines.push(`- Parent: \`${info.ParentType.FullName}\``);
+  lines.push(`- Source: ${info.Source.Name} (${info.Source.Type})`);
 
-  if (info.overloads.length > 0) {
-    lines.push(`- Overloads: ${info.overloads.map(o => `\`${o.Signature}\``).join(", ")}`);
+  if (info.Overloads.length > 0) {
+    lines.push(`- Overloads: ${info.Overloads.map(o => `\`${o.Signature}\``).join(", ")}`);
   }
 
-  if (info.callers.length > 0) {
+  if (info.Callers.length > 0) {
     lines.push("");
-    lines.push(`## Callers (${info.callers.length}${info.callersTruncated ? "+" : ""})`);
-    for (const c of info.callers) lines.push(`- \`${c.FullName}\` — ${c.source}`);
+    lines.push(`## Callers (${info.Callers.length}${info.CallersTruncated ? "+" : ""})`);
+    for (const c of info.Callers) lines.push(`- \`${c.FullName}\` — ${c.Source}`);
   }
 
-  if (info.callees.length > 0) {
+  if (info.Callees.length > 0) {
     lines.push("");
-    lines.push(`## Callees (${info.callees.length}${info.calleesTruncated ? "+" : ""})`);
-    for (const c of info.callees) lines.push(`- \`${c.FullName}\` — ${c.source}`);
+    lines.push(`## Callees (${info.Callees.length}${info.CalleesTruncated ? "+" : ""})`);
+    for (const c of info.Callees) lines.push(`- \`${c.FullName}\` — ${c.Source}`);
   }
 
-  if (info.harmonyPatches.length > 0) {
+  if (info.HarmonyPatches.length > 0) {
     lines.push("");
-    lines.push(`## Harmony Patches (${info.harmonyPatches.length})`);
-    for (const p of info.harmonyPatches) {
+    lines.push(`## Harmony Patches (${info.HarmonyPatches.length})`);
+    for (const p of info.HarmonyPatches) {
       const prio = p.Priority ? ` [${p.Priority}]` : "";
-      lines.push(`- **${p.PatchType}** \`${p.PatchClass}.${p.PatchMethod}\`${prio} — ${p.source}`);
+      lines.push(`- **${p.PatchType}** \`${p.PatchClass}.${p.PatchMethod}\`${prio} — ${p.Source}`);
     }
   }
 
-  if (info.decompiled) {
+  if (info.Decompiled) {
     lines.push("");
     lines.push("## Source");
     lines.push("```csharp");
-    lines.push(info.decompiled);
+    lines.push(info.Decompiled);
     lines.push("```");
   }
 
@@ -126,30 +126,30 @@ export function formatMethodInfo(info: MethodInfoResult): string {
 // --- list_type_members ---
 export function formatTypeMembers(result: TypeMembersResult): string {
   const lines: string[] = [];
-  lines.push(`# ${result.typeName}`);
+  lines.push(`# ${result.TypeName}`);
 
-  if (result.methods && result.methods.length > 0) {
+  if (result.Methods && result.Methods.length > 0) {
     lines.push("");
-    lines.push(`## Methods (${result.methods.length})`);
-    for (const m of result.methods) {
+    lines.push(`## Methods (${result.Methods.length})`);
+    for (const m of result.Methods) {
       const mods = [m.Accessibility, m.IsStatic ? "static" : "", m.IsVirtual ? "virtual" : "", m.IsAbstract ? "abstract" : ""].filter(Boolean).join(" ");
       lines.push(`- \`${m.Name}\` ${mods} → ${m.ReturnType}`);
     }
   }
 
-  if (result.fields && result.fields.length > 0) {
+  if (result.Fields && result.Fields.length > 0) {
     lines.push("");
-    lines.push(`## Fields (${result.fields.length})`);
-    for (const f of result.fields) {
+    lines.push(`## Fields (${result.Fields.length})`);
+    for (const f of result.Fields) {
       const mods = [f.Accessibility, f.IsStatic ? "static" : ""].filter(Boolean).join(" ");
       lines.push(`- \`${f.Name}\` ${mods} : ${f.FieldType}`);
     }
   }
 
-  if (result.properties && result.properties.length > 0) {
+  if (result.Properties && result.Properties.length > 0) {
     lines.push("");
-    lines.push(`## Properties (${result.properties.length})`);
-    for (const p of result.properties) {
+    lines.push(`## Properties (${result.Properties.length})`);
+    for (const p of result.Properties) {
       const accessors = [p.HasGetter ? "get" : "", p.HasSetter ? "set" : ""].filter(Boolean).join("/");
       lines.push(`- \`${p.Name}\` { ${accessors} } : ${p.PropertyType}`);
     }
@@ -161,8 +161,8 @@ export function formatTypeMembers(result: TypeMembersResult): string {
 // --- get_callers / get_callees ---
 export function formatMethodList(methods: MethodReference[], title: string): string {
   if (methods.length === 0) return `${title}\nNone.`;
-  const lines: string[] = [`${title}`];
-  for (const m of methods) lines.push(`- \`${m.FullName}\` — ${m.source}`);
+  const lines: string[] = [title];
+  for (const m of methods) lines.push(`- \`${m.FullName}\` — ${m.Source}`);
   return lines.join("\n");
 }
 
@@ -175,22 +175,22 @@ export function formatCallTree(tree: CallTreeNode, title: string): string {
 
 function renderTreeNode(node: CallTreeNode, lines: string[], prefix: string, isRoot: boolean): void {
   if (isRoot) {
-    lines.push(node.method);
+    lines.push(node.Method);
   }
-  const children = node.children;
+  const children = node.Children;
   for (let i = 0; i < children.length; i++) {
     const isLast = i === children.length - 1;
     const connector = isLast ? "└── " : "├── ";
     const child = children[i];
-    const label = child.isCycle ? `${child.method} ⟳ (cycle)` : child.method;
+    const label = child.IsCycle ? `${child.Method} ⟳ (cycle)` : child.Method;
     lines.push(`${prefix}${connector}${label}`);
-    if (!child.isCycle && child.children.length > 0) {
+    if (!child.IsCycle && child.Children.length > 0) {
       const newPrefix = prefix + (isLast ? "    " : "│   ");
       renderTreeNode(child, lines, newPrefix, false);
     }
   }
-  if (node.truncated) {
-    lines.push(`${prefix}└── ... (${node.truncated} more)`);
+  if (node.Truncated) {
+    lines.push(`${prefix}└── ... (${node.Truncated} more)`);
   }
 }
 
@@ -200,7 +200,7 @@ export function formatDefList(defs: DefSummary[], title: string): string {
   const lines: string[] = [title];
   for (const d of defs) {
     const label = d.Label ? ` "${d.Label}"` : "";
-    lines.push(`- **${d.DefName}** (${d.DefType})${label} — ${d.source}`);
+    lines.push(`- **${d.DefName}** (${d.DefType})${label} — ${d.Source}`);
   }
   return lines.join("\n");
 }
@@ -212,7 +212,7 @@ export function formatDefDetails(def: DefDetails): string {
   if (def.Label) lines.push(`- Label: ${def.Label}`);
   if (def.Description) lines.push(`- Description: ${def.Description}`);
   if (def.ParentDef) lines.push(`- Parent: ${def.ParentDef}`);
-  lines.push(`- Source: ${def.source}`);
+  lines.push(`- Source: ${def.Source}`);
   lines.push(`- File: ${def.SourceFile}`);
   lines.push("");
   lines.push("## XML");
@@ -225,7 +225,7 @@ export function formatDefDetails(def: DefDetails): string {
 // --- list_def_types ---
 export function formatDefTypes(types: DefTypeCount[]): string {
   const lines: string[] = [`## Def Types (${types.length})`];
-  for (const t of types) lines.push(`- ${t.DefType}: ${t.count}`);
+  for (const t of types) lines.push(`- ${t.DefType}: ${t.Count}`);
   return lines.join("\n");
 }
 
@@ -236,7 +236,7 @@ export function formatPatchList(patches: HarmonyPatchResult[], title: string): s
   for (const p of patches) {
     const target = p.TargetMethod ? `${p.TargetType}.${p.TargetMethod}` : p.TargetType;
     const prio = p.Priority ? ` [${p.Priority}]` : "";
-    lines.push(`- **${p.PatchType}** on \`${target}\` by \`${p.PatchClass}.${p.PatchMethod}\`${prio} — ${p.source}`);
+    lines.push(`- **${p.PatchType}** on \`${target}\` by \`${p.PatchClass}.${p.PatchMethod}\`${prio} — ${p.Source}`);
   }
   return lines.join("\n");
 }

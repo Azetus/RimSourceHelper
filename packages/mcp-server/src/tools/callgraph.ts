@@ -17,7 +17,7 @@ export async function getCallers(args: Record<string, unknown>, config: Config) 
 
     const placeholders = ids.map(() => "?").join(",");
     return db.prepare(
-      `SELECT DISTINCT m.FullName, m.Signature, m.ReturnType, s.Name as source
+      `SELECT DISTINCT m.FullName, m.Signature, m.ReturnType, s.Name as Source
        FROM Methods m
        JOIN Calls c ON m.Id = c.CallerMethodId
        JOIN Sources s ON m.SourceId = s.Id
@@ -44,7 +44,7 @@ export async function getCallees(args: Record<string, unknown>, config: Config) 
 
     const placeholders = ids.map(() => "?").join(",");
     return db.prepare(
-      `SELECT DISTINCT m.FullName, m.Signature, m.ReturnType, s.Name as source
+      `SELECT DISTINCT m.FullName, m.Signature, m.ReturnType, s.Name as Source
        FROM Methods m
        JOIN Calls c ON m.Id = c.CalleeMethodId
        JOIN Sources s ON m.SourceId = s.Id
@@ -89,7 +89,7 @@ export async function getCallTree(args: Record<string, unknown>, config: Config)
     return { content: [{ type: "text" as const, text: result }], isError: true };
   }
 
-  const tree = result.length === 1 ? result[0] : result[0];
+  const tree = result[0];
   const title = `## Call Tree: ${method} → ${direction} (depth ${maxDepth})`;
   return { content: [{ type: "text" as const, text: formatCallTree(tree, title) }] };
 }
@@ -117,26 +117,26 @@ function buildTreeNode(
   const info = infoStmt.get(methodId) as unknown as { FullName: string; Signature: string };
 
   if (pathVisited.has(methodId)) {
-    return { method: info.FullName, signature: info.Signature, isCycle: true, children: [] };
+    return { Method: info.FullName, Signature: info.Signature, IsCycle: true, Children: [] };
   }
 
   if (depth >= maxDepth) {
-    return { method: info.FullName, signature: info.Signature, children: [] };
+    return { Method: info.FullName, Signature: info.Signature, Children: [] };
   }
 
   const newPath = new Set(pathVisited);
   newPath.add(methodId);
 
   const neighbors = neighborStmt.all(methodId) as unknown as { Id: number; FullName: string; Signature: string }[];
-  const node: CallTreeNode = { method: info.FullName, signature: info.Signature, children: [] };
+  const node: CallTreeNode = { Method: info.FullName, Signature: info.Signature, Children: [] };
 
   const limit = Math.min(neighbors.length, MAX_CHILDREN_PER_NODE);
   for (let i = 0; i < limit; i++) {
-    node.children.push(buildTreeNode(neighbors[i].Id, maxDepth, depth + 1, newPath, neighborStmt, infoStmt));
+    node.Children.push(buildTreeNode(neighbors[i].Id, maxDepth, depth + 1, newPath, neighborStmt, infoStmt));
   }
 
   if (neighbors.length > MAX_CHILDREN_PER_NODE) {
-    node.truncated = neighbors.length - MAX_CHILDREN_PER_NODE;
+    node.Truncated = neighbors.length - MAX_CHILDREN_PER_NODE;
   }
 
   return node;

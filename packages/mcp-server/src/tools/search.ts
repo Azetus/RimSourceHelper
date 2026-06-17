@@ -17,10 +17,10 @@ export async function findTarget(args: Record<string, unknown>, config: Config) 
 
     if (kind !== "method") {
       const sql = source
-        ? `SELECT 'type' as kind, t.FullName, t.Name, t.Namespace, t.IsAbstract, t.IsInterface, s.Name as source
+        ? `SELECT 'type' as Kind, t.FullName, t.Name, t.Namespace, t.IsAbstract, t.IsInterface, s.Name as Source
            FROM Types t JOIN Sources s ON t.SourceId = s.Id
            WHERE t.Name LIKE ? AND s.Name = ? LIMIT ?`
-        : `SELECT 'type' as kind, t.FullName, t.Name, t.Namespace, t.IsAbstract, t.IsInterface, s.Name as source
+        : `SELECT 'type' as Kind, t.FullName, t.Name, t.Namespace, t.IsAbstract, t.IsInterface, s.Name as Source
            FROM Types t JOIN Sources s ON t.SourceId = s.Id
            WHERE t.Name LIKE ? LIMIT ?`;
       const params: (string | number)[] = source ? [`%${query}%`, source, limit] : [`%${query}%`, limit];
@@ -29,10 +29,10 @@ export async function findTarget(args: Record<string, unknown>, config: Config) 
 
     if (kind !== "type") {
       const sql = source
-        ? `SELECT 'method' as kind, m.FullName, m.Name, m.Signature, m.ReturnType, s.Name as source
+        ? `SELECT 'method' as Kind, m.FullName, m.Name, m.Signature, m.ReturnType, s.Name as Source
            FROM Methods m JOIN Sources s ON m.SourceId = s.Id
            WHERE m.Name LIKE ? AND s.Name = ? LIMIT ?`
-        : `SELECT 'method' as kind, m.FullName, m.Name, m.Signature, m.ReturnType, s.Name as source
+        : `SELECT 'method' as Kind, m.FullName, m.Name, m.Signature, m.ReturnType, s.Name as Source
            FROM Methods m JOIN Sources s ON m.SourceId = s.Id
            WHERE m.Name LIKE ? LIMIT ?`;
       const params: (string | number)[] = source ? [`%${query}%`, source, limit] : [`%${query}%`, limit];
@@ -71,11 +71,11 @@ export async function getTargetInfo(args: Record<string, unknown>, config: Confi
     try {
       const stdout = await runAnalyzer(config.analyzerPath, ["decompile", "--target", target, "--db", config.databasePath]);
       const parsed = JSON.parse(stdout);
-      if (parsed.status === "success") info.decompiled = parsed.source;
-    } catch { info.decompiled = "(decompilation failed)"; }
+      if (parsed.status === "success") info.Decompiled = parsed.source;
+    } catch { info.Decompiled = "(decompilation failed)"; }
   }
 
-  const text = info.kind === "type" ? formatTypeInfo(info) : formatMethodInfo(info);
+  const text = info.Kind === "type" ? formatTypeInfo(info) : formatMethodInfo(info);
   return { content: [{ type: "text" as const, text }] };
 }
 
@@ -96,20 +96,20 @@ export async function listTypeMembers(args: Record<string, unknown>, config: Con
       return `Type not found: ${typeName}`;
     }
 
-    const membersResult: TypeMembersResult = { typeName: type.FullName };
+    const membersResult: TypeMembersResult = { TypeName: type.FullName };
 
     if (kind === "methods" || kind === "all") {
-      membersResult.methods = db.prepare(
+      membersResult.Methods = db.prepare(
         "SELECT Name, Signature, ReturnType, IsStatic, IsVirtual, IsAbstract, Accessibility FROM Methods WHERE TypeId = ?"
       ).all(type.Id) as unknown as MemberMethod[];
     }
     if (kind === "fields" || kind === "all") {
-      membersResult.fields = db.prepare(
+      membersResult.Fields = db.prepare(
         "SELECT Name, FieldType, IsStatic, Accessibility FROM Fields WHERE TypeId = ?"
       ).all(type.Id) as unknown as MemberField[];
     }
     if (kind === "properties" || kind === "all") {
-      membersResult.properties = db.prepare(
+      membersResult.Properties = db.prepare(
         "SELECT Name, PropertyType, HasGetter, HasSetter, Accessibility FROM Properties WHERE TypeId = ?"
       ).all(type.Id) as unknown as MemberProperty[];
     }
@@ -158,30 +158,30 @@ function gatherTypeInfo(db: DatabaseSync, type: Record<string, unknown>): TypeIn
     `SELECT t.FullName FROM Types t JOIN Inheritance i ON t.Id = i.ChildTypeId WHERE i.ParentTypeId = ?`
   ).all(typeId) as unknown as { FullName: string }[];
 
-  const methodCount = (db.prepare("SELECT COUNT(*) as count FROM Methods WHERE TypeId = ?").get(typeId) as unknown as { count: number }).count;
-  const fieldCount = (db.prepare("SELECT COUNT(*) as count FROM Fields WHERE TypeId = ?").get(typeId) as unknown as { count: number }).count;
-  const propertyCount = (db.prepare("SELECT COUNT(*) as count FROM Properties WHERE TypeId = ?").get(typeId) as unknown as { count: number }).count;
+  const methodCount = (db.prepare("SELECT COUNT(*) as Count FROM Methods WHERE TypeId = ?").get(typeId) as unknown as { Count: number }).Count;
+  const fieldCount = (db.prepare("SELECT COUNT(*) as Count FROM Fields WHERE TypeId = ?").get(typeId) as unknown as { Count: number }).Count;
+  const propertyCount = (db.prepare("SELECT COUNT(*) as Count FROM Properties WHERE TypeId = ?").get(typeId) as unknown as { Count: number }).Count;
 
   const patches = db.prepare(
-    `SELECT h.TargetMethod, h.PatchType, h.PatchClass, h.PatchMethod, h.Priority, s.Name as source
+    `SELECT h.TargetMethod, h.PatchType, h.PatchClass, h.PatchMethod, h.Priority, s.Name as Source
      FROM HarmonyPatches h JOIN Sources s ON h.SourceId = s.Id WHERE h.TargetType = ?`
   ).all(typeFullName) as unknown as HarmonyPatchEntry[];
 
   return {
-    kind: "type",
-    fullName: typeFullName,
-    namespace: type.Namespace as string | null,
-    baseType: type.BaseType as string | null,
-    isAbstract: !!type.IsAbstract,
-    isInterface: !!type.IsInterface,
-    isEnum: !!type.IsEnum,
-    isSealed: !!type.IsSealed,
-    accessibility: type.Accessibility as string | null,
-    source,
-    parents,
-    children,
-    memberCounts: { methods: methodCount, fields: fieldCount, properties: propertyCount },
-    harmonyPatches: patches
+    Kind: "type",
+    FullName: typeFullName,
+    Namespace: type.Namespace as string | null,
+    BaseType: type.BaseType as string | null,
+    IsAbstract: !!type.IsAbstract,
+    IsInterface: !!type.IsInterface,
+    IsEnum: !!type.IsEnum,
+    IsSealed: !!type.IsSealed,
+    Accessibility: type.Accessibility as string | null,
+    Source: source,
+    Parents: parents,
+    Children: children,
+    MemberCounts: { Methods: methodCount, Fields: fieldCount, Properties: propertyCount },
+    HarmonyPatches: patches
   };
 }
 
@@ -206,7 +206,7 @@ function gatherMethodInfo(db: DatabaseSync, methods: Record<string, unknown>[]):
 
   const CALL_LIMIT = 50;
   const callersRaw = db.prepare(
-    `SELECT DISTINCT m.FullName, m.Signature, s.Name as source
+    `SELECT DISTINCT m.FullName, m.Signature, s.Name as Source
      FROM Methods m JOIN Calls c ON m.Id = c.CallerMethodId JOIN Sources s ON m.SourceId = s.Id
      WHERE c.CalleeMethodId IN (${idPlaceholders}) LIMIT ${CALL_LIMIT + 1}`
   ).all(...idValues) as unknown as MethodReference[];
@@ -214,7 +214,7 @@ function gatherMethodInfo(db: DatabaseSync, methods: Record<string, unknown>[]):
   const callers = callersTruncated ? callersRaw.slice(0, CALL_LIMIT) : callersRaw;
 
   const calleesRaw = db.prepare(
-    `SELECT DISTINCT m.FullName, m.Signature, s.Name as source
+    `SELECT DISTINCT m.FullName, m.Signature, s.Name as Source
      FROM Methods m JOIN Calls c ON m.Id = c.CalleeMethodId JOIN Sources s ON m.SourceId = s.Id
      WHERE c.CallerMethodId IN (${idPlaceholders}) LIMIT ${CALL_LIMIT + 1}`
   ).all(...idValues) as unknown as MethodReference[];
@@ -224,28 +224,28 @@ function gatherMethodInfo(db: DatabaseSync, methods: Record<string, unknown>[]):
   const parentFullName = parentType?.FullName;
   const patches = parentFullName
     ? db.prepare(
-        `SELECT h.PatchType, h.PatchClass, h.PatchMethod, h.Priority, s.Name as source
+        `SELECT h.PatchType, h.PatchClass, h.PatchMethod, h.Priority, s.Name as Source
          FROM HarmonyPatches h JOIN Sources s ON h.SourceId = s.Id
          WHERE h.TargetType = ? AND h.TargetMethod = ?`
       ).all(parentFullName, methodName) as unknown as HarmonyPatchEntry[]
     : [];
 
   return {
-    kind: "method",
-    fullName: methodFullName,
-    signature: primary.Signature as string,
-    returnType: primary.ReturnType as string,
-    isStatic: !!primary.IsStatic,
-    isVirtual: !!primary.IsVirtual,
-    isAbstract: !!primary.IsAbstract,
-    accessibility: primary.Accessibility as string | null,
-    source,
-    parentType,
-    overloads,
-    callers,
-    callersTruncated,
-    callees,
-    calleesTruncated,
-    harmonyPatches: patches
+    Kind: "method",
+    FullName: methodFullName,
+    Signature: primary.Signature as string,
+    ReturnType: primary.ReturnType as string,
+    IsStatic: !!primary.IsStatic,
+    IsVirtual: !!primary.IsVirtual,
+    IsAbstract: !!primary.IsAbstract,
+    Accessibility: primary.Accessibility as string | null,
+    Source: source,
+    ParentType: parentType,
+    Overloads: overloads,
+    Callers: callers,
+    CallersTruncated: callersTruncated,
+    Callees: callees,
+    CalleesTruncated: calleesTruncated,
+    HarmonyPatches: patches
   };
 }

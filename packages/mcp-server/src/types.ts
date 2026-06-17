@@ -1,8 +1,8 @@
-// 数据库查询结果的严格类型定义
+// 数据库查询结果的严格类型定义，字段名统一 PascalCase（对齐 DB 列名）
 
 // --- find_target ---
 export interface TargetSearchResult {
-  kind: "type" | "method";
+  Kind: "type" | "method";
   FullName: string;
   Name: string;
   Namespace?: string | null;
@@ -10,7 +10,7 @@ export interface TargetSearchResult {
   IsInterface?: number;
   Signature?: string;
   ReturnType?: string;
-  source: string;
+  Source: string;
 }
 
 // --- get_target_info ---
@@ -30,52 +30,52 @@ export interface HarmonyPatchEntry {
   PatchClass: string;
   PatchMethod: string;
   Priority: string | null;
-  source: string;
+  Source: string;
 }
 
 export interface TypeInfoResult {
-  kind: "type";
-  fullName: string;
-  namespace: string | null;
-  baseType: string | null;
-  isAbstract: boolean;
-  isInterface: boolean;
-  isEnum: boolean;
-  isSealed: boolean;
-  accessibility: string | null;
-  source: SourceInfo;
-  parents: InheritanceEntry[];
-  children: { FullName: string }[];
-  memberCounts: { methods: number; fields: number; properties: number };
-  harmonyPatches: HarmonyPatchEntry[];
-  decompiled?: string;
+  Kind: "type";
+  FullName: string;
+  Namespace: string | null;
+  BaseType: string | null;
+  IsAbstract: boolean;
+  IsInterface: boolean;
+  IsEnum: boolean;
+  IsSealed: boolean;
+  Accessibility: string | null;
+  Source: SourceInfo;
+  Parents: InheritanceEntry[];
+  Children: { FullName: string }[];
+  MemberCounts: { Methods: number; Fields: number; Properties: number };
+  HarmonyPatches: HarmonyPatchEntry[];
+  Decompiled?: string;
 }
 
 export interface MethodReference {
   FullName: string;
   Signature: string;
   ReturnType?: string;
-  source: string;
+  Source: string;
 }
 
 export interface MethodInfoResult {
-  kind: "method";
-  fullName: string;
-  signature: string;
-  returnType: string;
-  isStatic: boolean;
-  isVirtual: boolean;
-  isAbstract: boolean;
-  accessibility: string | null;
-  source: SourceInfo;
-  parentType: { FullName: string; Namespace: string; BaseType: string } | null;
-  overloads: { Signature: string; ReturnType: string }[];
-  callers: MethodReference[];
-  callersTruncated: boolean;
-  callees: MethodReference[];
-  calleesTruncated: boolean;
-  harmonyPatches: HarmonyPatchEntry[];
-  decompiled?: string;
+  Kind: "method";
+  FullName: string;
+  Signature: string;
+  ReturnType: string;
+  IsStatic: boolean;
+  IsVirtual: boolean;
+  IsAbstract: boolean;
+  Accessibility: string | null;
+  Source: SourceInfo;
+  ParentType: { FullName: string; Namespace: string; BaseType: string } | null;
+  Overloads: { Signature: string; ReturnType: string }[];
+  Callers: MethodReference[];
+  CallersTruncated: boolean;
+  Callees: MethodReference[];
+  CalleesTruncated: boolean;
+  HarmonyPatches: HarmonyPatchEntry[];
+  Decompiled?: string;
 }
 
 // --- list_type_members ---
@@ -105,19 +105,19 @@ export interface MemberProperty {
 }
 
 export interface TypeMembersResult {
-  typeName: string;
-  methods?: MemberMethod[];
-  fields?: MemberField[];
-  properties?: MemberProperty[];
+  TypeName: string;
+  Methods?: MemberMethod[];
+  Fields?: MemberField[];
+  Properties?: MemberProperty[];
 }
 
 // --- call tree ---
 export interface CallTreeNode {
-  method: string;
-  signature: string;
-  isCycle?: boolean;
-  truncated?: number;
-  children: CallTreeNode[];
+  Method: string;
+  Signature: string;
+  IsCycle?: boolean;
+  Truncated?: number;
+  Children: CallTreeNode[];
 }
 
 // --- defs ---
@@ -127,7 +127,7 @@ export interface DefSummary {
   Label: string | null;
   IsAbstract?: number;
   ParentDef?: string | null;
-  source: string;
+  Source: string;
 }
 
 export interface DefDetails {
@@ -139,12 +139,12 @@ export interface DefDetails {
   IsAbstract: number;
   RawXml: string;
   SourceFile: string;
-  source: string;
+  Source: string;
 }
 
 export interface DefTypeCount {
   DefType: string;
-  count: number;
+  Count: number;
 }
 
 // --- harmony ---
@@ -155,7 +155,7 @@ export interface HarmonyPatchResult {
   PatchClass: string;
   PatchMethod: string;
   Priority: string | null;
-  source: string;
+  Source: string;
 }
 
 // --- sources ---
