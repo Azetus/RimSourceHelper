@@ -20,7 +20,7 @@ export function formatFindTarget(results: TargetSearchResult[]): string {
   if (methods.length > 0) {
     if (types.length > 0) lines.push("");
     lines.push(`## Methods (${methods.length})`);
-    for (const m of methods) lines.push(`- \`${m.FullName}\` — ${m.Source}`);
+    for (const m of methods) lines.push(`- \`${m.Signature ?? m.FullName}\` — ${m.Source}`);
   }
 
   return lines.join("\n");
@@ -94,13 +94,13 @@ export function formatMethodInfo(info: MethodInfoResult): string {
   if (info.Callers.length > 0) {
     lines.push("");
     lines.push(`## Callers (${info.Callers.length}${info.CallersTruncated ? "+" : ""})`);
-    for (const c of info.Callers) lines.push(`- \`${c.FullName}\` — ${c.Source}`);
+    for (const c of info.Callers) lines.push(`- \`${c.Signature}\` — ${c.Source}`);
   }
 
   if (info.Callees.length > 0) {
     lines.push("");
     lines.push(`## Callees (${info.Callees.length}${info.CalleesTruncated ? "+" : ""})`);
-    for (const c of info.Callees) lines.push(`- \`${c.FullName}\` — ${c.Source}`);
+    for (const c of info.Callees) lines.push(`- \`${c.Signature}\` — ${c.Source}`);
   }
 
   if (info.HarmonyPatches.length > 0) {
@@ -162,7 +162,7 @@ export function formatTypeMembers(result: TypeMembersResult): string {
 export function formatMethodList(methods: MethodReference[], title: string): string {
   if (methods.length === 0) return `${title}\nNone.`;
   const lines: string[] = [title];
-  for (const m of methods) lines.push(`- \`${m.FullName}\` — ${m.Source}`);
+  for (const m of methods) lines.push(`- \`${m.Signature}\` — ${m.Source}`);
   return lines.join("\n");
 }
 
