@@ -9,6 +9,7 @@ public class HarmonyPatchEntity
     public string PatchType { get; set; } = string.Empty;
     public string PatchClass { get; set; } = string.Empty;
     public string PatchMethod { get; set; } = string.Empty;
+    public string? TargetParams { get; set; }
     public string? Priority { get; set; }
     public long SourceId { get; set; }
 }

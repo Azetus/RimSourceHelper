@@ -28,7 +28,7 @@ public static class HarmonyAnalyzer
         try
         {
             // 从类级 [HarmonyPatch] 属性提取目标信息
-            var (targetType, targetMethod) = ExtractClassLevelTarget(type);
+            var (targetType, targetMethod, targetParams) = ExtractClassLevelTarget(type);
 
             if (targetType is not null)
             {
@@ -38,12 +38,15 @@ public static class HarmonyAnalyzer
                     var patchType = DetectPatchType(method);
                     if (patchType is null) continue;
 
+                    // 方法级可能有自己的 [HarmonyPatch] 指定参数类型（覆盖类级）
+                    var (_, mMethod, mParams) = ExtractMethodLevelTarget(method);
                     var priority = ExtractPriority(method) ?? ExtractPriority(type);
 
                     patches.Add(new HarmonyPatchEntity
                     {
                         TargetType = targetType,
-                        TargetMethod = targetMethod,
+                        TargetMethod = mMethod ?? targetMethod,
+                        TargetParams = mParams ?? targetParams,
                         PatchType = patchType,
                         PatchClass = type.FullName,
                         PatchMethod = method.Name,
@@ -52,26 +55,30 @@ public static class HarmonyAnalyzer
                 }
             }
 
-            // 检查方法级 [HarmonyPatch] 属性
-            foreach (var method in type.Methods)
+            // 检查方法级 [HarmonyPatch] 属性（无类级声明时）
+            if (targetType is null)
             {
-                var (mTargetType, mTargetMethod) = ExtractMethodLevelTarget(method);
-                if (mTargetType is null) continue;
-
-                var patchType = DetectPatchType(method) ?? InferPatchTypeFromName(method.Name);
-                if (patchType is null) continue;
-
-                var priority = ExtractPriority(method);
-
-                patches.Add(new HarmonyPatchEntity
+                foreach (var method in type.Methods)
                 {
-                    TargetType = mTargetType,
-                    TargetMethod = mTargetMethod,
-                    PatchType = patchType,
-                    PatchClass = type.FullName,
-                    PatchMethod = method.Name,
-                    Priority = priority
-                });
+                    var (mTargetType, mTargetMethod, mTargetParams) = ExtractMethodLevelTarget(method);
+                    if (mTargetType is null) continue;
+
+                    var patchType = DetectPatchType(method) ?? InferPatchTypeFromName(method.Name);
+                    if (patchType is null) continue;
+
+                    var priority = ExtractPriority(method);
+
+                    patches.Add(new HarmonyPatchEntity
+                    {
+                        TargetType = mTargetType,
+                        TargetMethod = mTargetMethod,
+                        TargetParams = mTargetParams,
+                        PatchType = patchType,
+                        PatchClass = type.FullName,
+                        PatchMethod = method.Name,
+                        Priority = priority
+                    });
+                }
             }
         }
         catch (AssemblyResolutionException)
@@ -84,48 +91,70 @@ public static class HarmonyAnalyzer
             AnalyzeTypeRecursive(nested, patches);
     }
 
-    // 从类级 [HarmonyPatch] 属性提取 TargetType 和 TargetMethod
-    private static (string? TargetType, string? TargetMethod) ExtractClassLevelTarget(TypeDefinition type)
+    // 从类级 [HarmonyPatch] 属性提取 TargetType、TargetMethod 和 TargetParams
+    private static (string? TargetType, string? TargetMethod, string? TargetParams) ExtractClassLevelTarget(TypeDefinition type)
     {
         string? targetType = null;
         string? targetMethod = null;
+        string? targetParams = null;
 
         foreach (var attr in type.CustomAttributes)
         {
             if (!IsHarmonyAttribute(attr, "HarmonyPatch")) continue;
-
-            foreach (var arg in attr.ConstructorArguments)
-            {
-                if (arg.Value is TypeReference typeRef)
-                    targetType = typeRef.FullName;
-                else if (arg.Value is string str && targetType is not null)
-                    targetMethod ??= str;
-            }
+            var (t, m, p) = ExtractPatchArguments(attr);
+            targetType ??= t;
+            targetMethod ??= m;
+            targetParams ??= p;
         }
 
-        return (targetType, targetMethod);
+        return (targetType, targetMethod, targetParams);
     }
 
     // 从方法级 [HarmonyPatch] 属性提取目标信息
-    private static (string? TargetType, string? TargetMethod) ExtractMethodLevelTarget(MethodDefinition method)
+    private static (string? TargetType, string? TargetMethod, string? TargetParams) ExtractMethodLevelTarget(MethodDefinition method)
     {
         string? targetType = null;
         string? targetMethod = null;
+        string? targetParams = null;
 
         foreach (var attr in method.CustomAttributes)
         {
             if (!IsHarmonyAttribute(attr, "HarmonyPatch")) continue;
+            var (t, m, p) = ExtractPatchArguments(attr);
+            targetType ??= t;
+            targetMethod ??= m;
+            targetParams ??= p;
+        }
 
-            foreach (var arg in attr.ConstructorArguments)
+        return (targetType, targetMethod, targetParams);
+    }
+
+    // 从单个 [HarmonyPatch] 属性中提取目标信息
+    private static (string? TargetType, string? TargetMethod, string? TargetParams) ExtractPatchArguments(CustomAttribute attr)
+    {
+        string? targetType = null;
+        string? targetMethod = null;
+        string? targetParams = null;
+
+        foreach (var arg in attr.ConstructorArguments)
+        {
+            if (arg.Value is TypeReference typeRef && targetType is null)
+                targetType = typeRef.FullName;
+            else if (arg.Value is string str)
+                targetMethod ??= str;
+            else if (arg.Value is CustomAttributeArgument[] typeArgs)
             {
-                if (arg.Value is TypeReference typeRef)
-                    targetType = typeRef.FullName;
-                else if (arg.Value is string str && targetType is not null)
-                    targetMethod ??= str;
+                // 提取 new Type[] { typeof(X), typeof(Y), ... } 参数类型数组
+                var paramTypes = typeArgs
+                    .Where(a => a.Value is TypeReference)
+                    .Select(a => ((TypeReference)a.Value).FullName);
+                var joined = string.Join(",", paramTypes);
+                if (joined.Length > 0)
+                    targetParams = joined;
             }
         }
 
-        return (targetType, targetMethod);
+        return (targetType, targetMethod, targetParams);
     }
 
     // 检测方法的 Patch 类型（通过属性）

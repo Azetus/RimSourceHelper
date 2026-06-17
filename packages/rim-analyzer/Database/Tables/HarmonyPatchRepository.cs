@@ -11,8 +11,8 @@ public class HarmonyPatchRepository(SqliteConnection connection)
     public int BulkInsert(IEnumerable<HarmonyPatchEntity> patches)
     {
         const string sql = """
-            INSERT INTO HarmonyPatches (TargetType, TargetMethod, PatchType, PatchClass, PatchMethod, Priority, SourceId)
-            VALUES (@TargetType, @TargetMethod, @PatchType, @PatchClass, @PatchMethod, @Priority, @SourceId)
+            INSERT INTO HarmonyPatches (TargetType, TargetMethod, PatchType, PatchClass, PatchMethod, TargetParams, Priority, SourceId)
+            VALUES (@TargetType, @TargetMethod, @PatchType, @PatchClass, @PatchMethod, @TargetParams, @Priority, @SourceId)
             """;
 
         using var transaction = connection.BeginTransaction();

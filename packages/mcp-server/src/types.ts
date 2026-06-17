@@ -26,6 +26,7 @@ export interface InheritanceEntry {
 
 export interface HarmonyPatchEntry {
   TargetMethod?: string;
+  TargetParams?: string | null;
   PatchType: string;
   PatchClass: string;
   PatchMethod: string;
@@ -151,6 +152,7 @@ export interface DefTypeCount {
 export interface HarmonyPatchResult {
   TargetType: string;
   TargetMethod: string | null;
+  TargetParams: string | null;
   PatchType: string;
   PatchClass: string;
   PatchMethod: string;

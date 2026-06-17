@@ -175,7 +175,7 @@ function gatherTypeInfo(db: DatabaseSync, type: Record<string, unknown>): TypeIn
   const propertyCount = (db.prepare("SELECT COUNT(*) as Count FROM Properties WHERE TypeId = ?").get(typeId) as unknown as { Count: number }).Count;
 
   const patches = db.prepare(
-    `SELECT h.TargetMethod, h.PatchType, h.PatchClass, h.PatchMethod, h.Priority, s.Name as Source
+    `SELECT h.TargetMethod, h.TargetParams, h.PatchType, h.PatchClass, h.PatchMethod, h.Priority, s.Name as Source
      FROM HarmonyPatches h JOIN Sources s ON h.SourceId = s.Id WHERE h.TargetType = ?`
   ).all(typeFullName) as unknown as HarmonyPatchEntry[];
 
@@ -236,7 +236,7 @@ function gatherMethodInfo(db: DatabaseSync, methods: Record<string, unknown>[]):
   const parentFullName = parentType?.FullName;
   const patches = parentFullName
     ? db.prepare(
-        `SELECT h.PatchType, h.PatchClass, h.PatchMethod, h.Priority, s.Name as Source
+        `SELECT h.TargetParams, h.PatchType, h.PatchClass, h.PatchMethod, h.Priority, s.Name as Source
          FROM HarmonyPatches h JOIN Sources s ON h.SourceId = s.Id
          WHERE h.TargetType = ? AND h.TargetMethod = ?`
       ).all(parentFullName, methodName) as unknown as HarmonyPatchEntry[]

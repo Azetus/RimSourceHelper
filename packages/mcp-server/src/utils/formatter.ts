@@ -55,7 +55,8 @@ export function formatTypeInfo(info: TypeInfoResult): string {
     lines.push("");
     lines.push(`## Harmony Patches (${info.HarmonyPatches.length})`);
     for (const p of info.HarmonyPatches) {
-      lines.push(`- **${p.PatchType}** on \`${p.TargetMethod ?? "(class)"}\` by \`${p.PatchClass}.${p.PatchMethod}\` — ${p.Source}`);
+      const tParams = p.TargetParams ? `(${p.TargetParams})` : "";
+      lines.push(`- **${p.PatchType}** on \`${p.TargetMethod ?? "(class)"}${tParams}\` by \`${p.PatchClass}.${p.PatchMethod}\` — ${p.Source}`);
     }
   }
 
@@ -108,7 +109,8 @@ export function formatMethodInfo(info: MethodInfoResult): string {
     lines.push(`## Harmony Patches (${info.HarmonyPatches.length})`);
     for (const p of info.HarmonyPatches) {
       const prio = p.Priority ? ` [${p.Priority}]` : "";
-      lines.push(`- **${p.PatchType}** \`${p.PatchClass}.${p.PatchMethod}\`${prio} — ${p.Source}`);
+      const mParams = p.TargetParams ? ` (${p.TargetParams})` : "";
+      lines.push(`- **${p.PatchType}**${mParams} \`${p.PatchClass}.${p.PatchMethod}\`${prio} — ${p.Source}`);
     }
   }
 
@@ -234,7 +236,8 @@ export function formatPatchList(patches: HarmonyPatchResult[], title: string): s
   if (patches.length === 0) return `${title}\nNone.`;
   const lines: string[] = [title];
   for (const p of patches) {
-    const target = p.TargetMethod ? `${p.TargetType}.${p.TargetMethod}` : p.TargetType;
+    const params = p.TargetParams ? `(${p.TargetParams})` : "";
+    const target = p.TargetMethod ? `${p.TargetType}.${p.TargetMethod}${params}` : p.TargetType;
     const prio = p.Priority ? ` [${p.Priority}]` : "";
     lines.push(`- **${p.PatchType}** on \`${target}\` by \`${p.PatchClass}.${p.PatchMethod}\`${prio} — ${p.Source}`);
   }

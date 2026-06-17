@@ -155,6 +155,7 @@ public static class DatabaseInitializer
             PatchType     TEXT NOT NULL,
             PatchClass    TEXT NOT NULL,
             PatchMethod   TEXT NOT NULL,
+            TargetParams  TEXT,
             Priority      TEXT,
             SourceId      INTEGER NOT NULL REFERENCES Sources(Id)
         );
