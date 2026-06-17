@@ -124,6 +124,24 @@ export async function listTypeMembers(args: Record<string, unknown>, config: Con
   return { content: [{ type: "text" as const, text: formatTypeMembers(result) }] };
 }
 
+// decompile: 按需反编译，仅返回源码（无元数据）
+export async function decompile(args: Record<string, unknown>, config: Config) {
+  const target = args.target as string;
+
+  try {
+    const stdout = await runAnalyzer(config.analyzerPath, [
+      "decompile", "--target", target, "--db", config.databasePath
+    ]);
+    const parsed = JSON.parse(stdout);
+    if (parsed.status === "error") {
+      return { content: [{ type: "text" as const, text: parsed.error }], isError: true };
+    }
+    return { content: [{ type: "text" as const, text: `\`\`\`csharp\n${parsed.source}\n\`\`\`` }] };
+  } catch (err) {
+    return { content: [{ type: "text" as const, text: `Decompilation failed: ${err}` }], isError: true };
+  }
+}
+
 // --- 内部辅助 ---
 
 function gatherTypeInfo(db: DatabaseSync, type: Record<string, unknown>): TypeInfoResult {

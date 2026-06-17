@@ -1,6 +1,6 @@
 import type { Tool } from "@modelcontextprotocol/sdk/types.js";
 import type { Config } from "../config.js";
-import { findTarget, getTargetInfo, listTypeMembers } from "./search.js";
+import { findTarget, getTargetInfo, listTypeMembers, decompile } from "./search.js";
 import { getCallers, getCallees, getCallTree } from "./callgraph.js";
 import { searchDefs, getDefDetails, listDefTypes, findDefReferences } from "./defs.js";
 import { findHarmonyPatches, listHarmonyPatches } from "./harmony.js";
@@ -158,6 +158,19 @@ export const toolDefinitions: Tool[] = [
     }
   },
 
+  // --- 源码 ---
+  {
+    name: "decompile_target",
+    description: "Decompile a type or method on demand. Returns only source code without metadata.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        target: { type: "string", description: "Type FullName or Method FullName/Signature" }
+      },
+      required: ["target"]
+    }
+  },
+
   // --- 数据库管理 ---
   {
     name: "build_database",
@@ -222,6 +235,7 @@ export async function handleToolCall(
     case "find_def_references": return findDefReferences(safeArgs, config);
     case "find_harmony_patches": return findHarmonyPatches(safeArgs, config);
     case "list_harmony_patches": return listHarmonyPatches(safeArgs, config);
+    case "decompile_target": return decompile(safeArgs, config);
     case "build_database": return buildDatabase(safeArgs, config);
     case "add_mod": return addMod(safeArgs, config);
     case "remove_mod": return removeMod(safeArgs, config);
