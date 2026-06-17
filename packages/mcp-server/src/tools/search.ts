@@ -19,11 +19,17 @@ export async function findTarget(args: Record<string, unknown>, config: Config) 
       const sql = source
         ? `SELECT 'type' as Kind, t.FullName, t.Name, t.Namespace, t.IsAbstract, t.IsInterface, s.Name as Source
            FROM Types t JOIN Sources s ON t.SourceId = s.Id
-           WHERE t.Name LIKE ? AND s.Name = ? LIMIT ?`
+           WHERE (t.Name LIKE ? OR t.FullName = ?) AND s.Name = ?
+           ORDER BY CASE WHEN t.Name = ? OR t.FullName = ? THEN 0 WHEN t.Name LIKE ? THEN 1 ELSE 2 END, t.Name
+           LIMIT ?`
         : `SELECT 'type' as Kind, t.FullName, t.Name, t.Namespace, t.IsAbstract, t.IsInterface, s.Name as Source
            FROM Types t JOIN Sources s ON t.SourceId = s.Id
-           WHERE t.Name LIKE ? LIMIT ?`;
-      const params: (string | number)[] = source ? [`%${query}%`, source, limit] : [`%${query}%`, limit];
+           WHERE (t.Name LIKE ? OR t.FullName = ?)
+           ORDER BY CASE WHEN t.Name = ? OR t.FullName = ? THEN 0 WHEN t.Name LIKE ? THEN 1 ELSE 2 END, t.Name
+           LIMIT ?`;
+      const params: (string | number)[] = source
+        ? [`%${query}%`, query, source, query, query, `${query}%`, limit]
+        : [`%${query}%`, query, query, query, `${query}%`, limit];
       items.push(...db.prepare(sql).all(...params) as unknown as TargetSearchResult[]);
     }
 
@@ -31,11 +37,17 @@ export async function findTarget(args: Record<string, unknown>, config: Config) 
       const sql = source
         ? `SELECT 'method' as Kind, m.FullName, m.Name, m.Signature, m.ReturnType, s.Name as Source
            FROM Methods m JOIN Sources s ON m.SourceId = s.Id
-           WHERE m.Name LIKE ? AND s.Name = ? LIMIT ?`
+           WHERE (m.Name LIKE ? OR m.FullName = ?) AND s.Name = ?
+           ORDER BY CASE WHEN m.Name = ? OR m.FullName = ? THEN 0 WHEN m.Name LIKE ? THEN 1 ELSE 2 END, m.Name
+           LIMIT ?`
         : `SELECT 'method' as Kind, m.FullName, m.Name, m.Signature, m.ReturnType, s.Name as Source
            FROM Methods m JOIN Sources s ON m.SourceId = s.Id
-           WHERE m.Name LIKE ? LIMIT ?`;
-      const params: (string | number)[] = source ? [`%${query}%`, source, limit] : [`%${query}%`, limit];
+           WHERE (m.Name LIKE ? OR m.FullName = ?)
+           ORDER BY CASE WHEN m.Name = ? OR m.FullName = ? THEN 0 WHEN m.Name LIKE ? THEN 1 ELSE 2 END, m.Name
+           LIMIT ?`;
+      const params: (string | number)[] = source
+        ? [`%${query}%`, query, source, query, query, `${query}%`, limit]
+        : [`%${query}%`, query, query, query, `${query}%`, limit];
       items.push(...db.prepare(sql).all(...params) as unknown as TargetSearchResult[]);
     }
 
