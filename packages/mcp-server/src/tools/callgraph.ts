@@ -7,6 +7,7 @@ const MAX_CHILDREN_PER_NODE = 20;
 // get_callers: 查找直接调用方（一层）
 export async function getCallers(args: Record<string, unknown>, config: Config) {
   const method = args.method as string;
+  const limit = (args.limit as number) ?? 50;
 
   return withDatabase(config.databasePath, (db) => {
     const ids = resolveMethodIds(db, method);
@@ -20,8 +21,8 @@ export async function getCallers(args: Record<string, unknown>, config: Config) 
        JOIN Calls c ON m.Id = c.CallerMethodId
        JOIN Sources s ON m.SourceId = s.Id
        WHERE c.CalleeMethodId IN (${placeholders})
-       ORDER BY m.FullName`
-    ).all(...ids);
+       ORDER BY m.FullName LIMIT ?`
+    ).all(...ids, limit);
 
     return { content: [{ type: "text" as const, text: JSON.stringify(callers, null, 2) }] };
   });
@@ -30,6 +31,7 @@ export async function getCallers(args: Record<string, unknown>, config: Config) 
 // get_callees: 查找直接被调用方（一层）
 export async function getCallees(args: Record<string, unknown>, config: Config) {
   const method = args.method as string;
+  const limit = (args.limit as number) ?? 50;
 
   return withDatabase(config.databasePath, (db) => {
     const ids = resolveMethodIds(db, method);
@@ -43,8 +45,8 @@ export async function getCallees(args: Record<string, unknown>, config: Config) 
        JOIN Calls c ON m.Id = c.CalleeMethodId
        JOIN Sources s ON m.SourceId = s.Id
        WHERE c.CallerMethodId IN (${placeholders})
-       ORDER BY m.FullName`
-    ).all(...ids);
+       ORDER BY m.FullName LIMIT ?`
+    ).all(...ids, limit);
 
     return { content: [{ type: "text" as const, text: JSON.stringify(callees, null, 2) }] };
   });

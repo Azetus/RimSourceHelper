@@ -17,7 +17,8 @@ export const toolDefinitions: Tool[] = [
       properties: {
         query: { type: "string", description: "Search keyword" },
         kind: { type: "string", enum: ["type", "method"], description: "Filter by kind" },
-        source: { type: "string", description: "Filter by source name" }
+        source: { type: "string", description: "Filter by source name" },
+        limit: { type: "number", description: "Max results per kind (default: 20)" }
       },
       required: ["query"]
     }
@@ -54,7 +55,8 @@ export const toolDefinitions: Tool[] = [
     inputSchema: {
       type: "object",
       properties: {
-        method: { type: "string", description: "Method FullName or Signature" }
+        method: { type: "string", description: "Method FullName or Signature" },
+        limit: { type: "number", description: "Max results (default: 50)" }
       },
       required: ["method"]
     }
@@ -65,7 +67,8 @@ export const toolDefinitions: Tool[] = [
     inputSchema: {
       type: "object",
       properties: {
-        method: { type: "string", description: "Method FullName or Signature" }
+        method: { type: "string", description: "Method FullName or Signature" },
+        limit: { type: "number", description: "Max results (default: 50)" }
       },
       required: ["method"]
     }
@@ -124,7 +127,8 @@ export const toolDefinitions: Tool[] = [
     inputSchema: {
       type: "object",
       properties: {
-        def_name: { type: "string", description: "Target DefName" }
+        def_name: { type: "string", description: "Target DefName" },
+        limit: { type: "number", description: "Max results (default: 50)" }
       },
       required: ["def_name"]
     }
@@ -148,7 +152,8 @@ export const toolDefinitions: Tool[] = [
     inputSchema: {
       type: "object",
       properties: {
-        source: { type: "string", description: "Filter by source name (mod name)" }
+        source: { type: "string", description: "Filter by source name (mod name)" },
+        limit: { type: "number", description: "Max results (default: 100)" }
       }
     }
   },

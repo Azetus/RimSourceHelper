@@ -33,17 +33,18 @@ export async function findHarmonyPatches(args: Record<string, unknown>, config: 
 // list_harmony_patches: 列出全部或按 Source 过滤的 Patches
 export async function listHarmonyPatches(args: Record<string, unknown>, config: Config) {
   const source = args.source as string | undefined;
+  const limit = (args.limit as number) ?? 100;
 
   return withDatabase(config.databasePath, (db) => {
     const sql = source
       ? `SELECT h.TargetType, h.TargetMethod, h.PatchType, h.PatchClass, h.PatchMethod, h.Priority, s.Name as source
          FROM HarmonyPatches h JOIN Sources s ON h.SourceId = s.Id
          WHERE s.Name = ?
-         ORDER BY h.TargetType, h.TargetMethod`
+         ORDER BY h.TargetType, h.TargetMethod LIMIT ?`
       : `SELECT h.TargetType, h.TargetMethod, h.PatchType, h.PatchClass, h.PatchMethod, h.Priority, s.Name as source
          FROM HarmonyPatches h JOIN Sources s ON h.SourceId = s.Id
-         ORDER BY s.Name, h.TargetType, h.TargetMethod`;
-    const params = source ? [source] : [];
+         ORDER BY s.Name, h.TargetType, h.TargetMethod LIMIT ?`;
+    const params: (string | number)[] = source ? [source, limit] : [limit];
 
     const results = db.prepare(sql).all(...params);
     return { content: [{ type: "text" as const, text: JSON.stringify(results, null, 2) }] };

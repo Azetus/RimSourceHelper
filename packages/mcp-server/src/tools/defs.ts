@@ -62,6 +62,7 @@ export async function listDefTypes(args: Record<string, unknown>, config: Config
 // find_def_references: 查找引用指定 Def 的其他 Def
 export async function findDefReferences(args: Record<string, unknown>, config: Config) {
   const defName = args.def_name as string;
+  const limit = (args.limit as number) ?? 50;
 
   return withDatabase(config.databasePath, (db) => {
     const results = db.prepare(
@@ -70,8 +71,8 @@ export async function findDefReferences(args: Record<string, unknown>, config: C
        JOIN DefReferences r ON d.Id = r.SourceDefId
        JOIN Sources s ON d.SourceId = s.Id
        WHERE r.TargetDefName = ?
-       ORDER BY d.DefType, d.DefName`
-    ).all(defName);
+       ORDER BY d.DefType, d.DefName LIMIT ?`
+    ).all(defName, limit);
     return { content: [{ type: "text" as const, text: JSON.stringify(results, null, 2) }] };
   });
 }

@@ -8,6 +8,7 @@ export async function findTarget(args: Record<string, unknown>, config: Config) 
   const query = args.query as string;
   const kind = args.kind as string | undefined;
   const source = args.source as string | undefined;
+  const limit = (args.limit as number) ?? 20;
 
   return withDatabase(config.databasePath, (db) => {
     const results: Record<string, unknown>[] = [];
@@ -16,11 +17,11 @@ export async function findTarget(args: Record<string, unknown>, config: Config) 
       const sql = source
         ? `SELECT 'type' as kind, t.FullName, t.Name, t.Namespace, t.IsAbstract, t.IsInterface, s.Name as source
            FROM Types t JOIN Sources s ON t.SourceId = s.Id
-           WHERE t.Name LIKE ? AND s.Name = ?`
+           WHERE t.Name LIKE ? AND s.Name = ? LIMIT ?`
         : `SELECT 'type' as kind, t.FullName, t.Name, t.Namespace, t.IsAbstract, t.IsInterface, s.Name as source
            FROM Types t JOIN Sources s ON t.SourceId = s.Id
-           WHERE t.Name LIKE ?`;
-      const params = source ? [`%${query}%`, source] : [`%${query}%`];
+           WHERE t.Name LIKE ? LIMIT ?`;
+      const params: (string | number)[] = source ? [`%${query}%`, source, limit] : [`%${query}%`, limit];
       results.push(...db.prepare(sql).all(...params) as Record<string, unknown>[]);
     }
 
@@ -28,11 +29,11 @@ export async function findTarget(args: Record<string, unknown>, config: Config) 
       const sql = source
         ? `SELECT 'method' as kind, m.FullName, m.Name, m.Signature, m.ReturnType, s.Name as source
            FROM Methods m JOIN Sources s ON m.SourceId = s.Id
-           WHERE m.Name LIKE ? AND s.Name = ?`
+           WHERE m.Name LIKE ? AND s.Name = ? LIMIT ?`
         : `SELECT 'method' as kind, m.FullName, m.Name, m.Signature, m.ReturnType, s.Name as source
            FROM Methods m JOIN Sources s ON m.SourceId = s.Id
-           WHERE m.Name LIKE ?`;
-      const params = source ? [`%${query}%`, source] : [`%${query}%`];
+           WHERE m.Name LIKE ? LIMIT ?`;
+      const params: (string | number)[] = source ? [`%${query}%`, source, limit] : [`%${query}%`, limit];
       results.push(...db.prepare(sql).all(...params) as Record<string, unknown>[]);
     }
 
@@ -206,19 +207,24 @@ function gatherMethodInfo(db: DatabaseSync, methods: Record<string, unknown>[]) 
   const idPlaceholders = allMethodIds.map(() => "?").join(",");
   const idValues = allMethodIds.map(m => m.Id);
 
-  // 调用方（聚合所有重载）
-  const callers = db.prepare(
+  // 调用方（聚合所有重载，限制数量）
+  const CALL_LIMIT = 50;
+  const callersRaw = db.prepare(
     `SELECT DISTINCT m.FullName, m.Signature, s.Name as source
      FROM Methods m JOIN Calls c ON m.Id = c.CallerMethodId JOIN Sources s ON m.SourceId = s.Id
-     WHERE c.CalleeMethodId IN (${idPlaceholders})`
+     WHERE c.CalleeMethodId IN (${idPlaceholders}) LIMIT ${CALL_LIMIT + 1}`
   ).all(...idValues);
+  const callersTruncated = callersRaw.length > CALL_LIMIT;
+  const callers = callersTruncated ? callersRaw.slice(0, CALL_LIMIT) : callersRaw;
 
-  // 被调用方（聚合所有重载）
-  const callees = db.prepare(
+  // 被调用方（聚合所有重载，限制数量）
+  const calleesRaw = db.prepare(
     `SELECT DISTINCT m.FullName, m.Signature, s.Name as source
      FROM Methods m JOIN Calls c ON m.Id = c.CalleeMethodId JOIN Sources s ON m.SourceId = s.Id
-     WHERE c.CallerMethodId IN (${idPlaceholders})`
+     WHERE c.CallerMethodId IN (${idPlaceholders}) LIMIT ${CALL_LIMIT + 1}`
   ).all(...idValues);
+  const calleesTruncated = calleesRaw.length > CALL_LIMIT;
+  const callees = calleesTruncated ? calleesRaw.slice(0, CALL_LIMIT) : calleesRaw;
 
   // Harmony Patches（通过父类型 FullName + 方法名匹配）
   const parentFullName = (parentType as Record<string, unknown>)?.FullName as string | undefined;
@@ -243,7 +249,9 @@ function gatherMethodInfo(db: DatabaseSync, methods: Record<string, unknown>[]) 
     parentType,
     overloads,
     callers,
+    callersTruncated,
     callees,
+    calleesTruncated,
     harmonyPatches: patches
   };
 }
