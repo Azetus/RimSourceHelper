@@ -28,7 +28,7 @@ Game DLLs + Defs XML
 - [.NET 10+](https://dotnet.microsoft.com/) Runtime
 - [Node.js 22.5+](https://nodejs.org/) (`node:sqlite` required)
 
-## Build
+## Build from source
 
 Requires [pnpm](https://pnpm.io/).
 
