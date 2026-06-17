@@ -1,6 +1,8 @@
 import type { Config } from "../config.js";
+import type { SourceResult } from "../types.js";
 import { runAnalyzer } from "../utils/analyzer.js";
 import { withDatabase } from "../utils/database.js";
+import { formatSourceList } from "../utils/formatter.js";
 
 // build_database: 构建/重建知识库
 export async function buildDatabase(args: Record<string, unknown>, config: Config) {
@@ -37,8 +39,8 @@ export async function removeMod(args: Record<string, unknown>, config: Config) {
 
 // list_sources: 列出数据库中所有 Source
 export async function listSources(args: Record<string, unknown>, config: Config) {
-  return withDatabase(config.databasePath, (db) => {
-    const sources = db.prepare("SELECT Name, Type, PackageId FROM Sources ORDER BY Type, Name").all();
-    return { content: [{ type: "text" as const, text: JSON.stringify(sources, null, 2) }] };
+  const sources = withDatabase(config.databasePath, (db) => {
+    return db.prepare("SELECT Name, Type, PackageId FROM Sources ORDER BY Type, Name").all() as unknown as SourceResult[];
   });
+  return { content: [{ type: "text" as const, text: formatSourceList(sources) }] };
 }
