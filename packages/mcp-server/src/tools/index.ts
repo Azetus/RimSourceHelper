@@ -51,11 +51,11 @@ export const toolDefinitions: Tool[] = [
   // --- 调用图 ---
   {
     name: "get_callers",
-    description: "Find all methods that directly call the specified method.",
+    description: "Find all methods that call the specified method, field, or property. Auto-detects target type.",
     inputSchema: {
       type: "object",
       properties: {
-        method: { type: "string", description: "Method FullName or Signature" },
+        method: { type: "string", description: "Method FullName/Signature, or TypeFullName.FieldName, or TypeFullName.PropertyName" },
         limit: { type: "number", description: "Max results (default: 50)" }
       },
       required: ["method"]
@@ -63,7 +63,7 @@ export const toolDefinitions: Tool[] = [
   },
   {
     name: "get_callees",
-    description: "Find all methods that the specified method directly calls.",
+    description: "Find all methods that the specified method directly calls. Set include_field_access=true to also see field/property accesses.",
     inputSchema: {
       type: "object",
       properties: {
