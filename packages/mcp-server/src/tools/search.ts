@@ -37,12 +37,12 @@ export async function findTarget(args: Record<string, unknown>, config: Config) 
       const sql = source
         ? `SELECT 'method' as Kind, m.FullName, m.Name, m.Signature, m.ReturnType, s.Name as Source
            FROM Methods m JOIN Sources s ON m.SourceId = s.Id
-           WHERE (m.Name LIKE ? OR m.FullName = ?) AND s.Name = ?
+           WHERE (m.Name LIKE ? OR m.FullName = ?) AND s.Name = ? AND m.IsAccessor = 0
            ORDER BY CASE WHEN m.Name = ? OR m.FullName = ? THEN 0 WHEN m.Name LIKE ? THEN 1 ELSE 2 END, m.Name
            LIMIT ?`
         : `SELECT 'method' as Kind, m.FullName, m.Name, m.Signature, m.ReturnType, s.Name as Source
            FROM Methods m JOIN Sources s ON m.SourceId = s.Id
-           WHERE (m.Name LIKE ? OR m.FullName = ?)
+           WHERE (m.Name LIKE ? OR m.FullName = ?) AND m.IsAccessor = 0
            ORDER BY CASE WHEN m.Name = ? OR m.FullName = ? THEN 0 WHEN m.Name LIKE ? THEN 1 ELSE 2 END, m.Name
            LIMIT ?`;
       const params: (string | number)[] = source
@@ -148,7 +148,7 @@ export async function listTypeMembers(args: Record<string, unknown>, config: Con
 
     if (kind === "methods" || kind === "all") {
       membersResult.Methods = db.prepare(
-        "SELECT Name, Signature, ReturnType, IsStatic, IsVirtual, IsAbstract, Accessibility FROM Methods WHERE TypeId = ?"
+        "SELECT Name, Signature, ReturnType, IsStatic, IsVirtual, IsAbstract, Accessibility FROM Methods WHERE TypeId = ? AND IsAccessor = 0"
       ).all(type.Id) as unknown as MemberMethod[];
     }
     if (kind === "fields" || kind === "all") {

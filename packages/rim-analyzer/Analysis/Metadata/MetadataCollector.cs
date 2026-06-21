@@ -68,11 +68,12 @@ public static class MetadataCollector
     {
         foreach (var method in type.Methods)
         {
-            // 跳过属性 getter/setter 和事件 add/remove
-            if (method.IsSpecialName && (method.Name.StartsWith("get_") || method.Name.StartsWith("set_")))
-                continue;
+            // 跳过事件 add/remove（保留属性 getter/setter 用于引用追踪）
             if (method.IsSpecialName && (method.Name.StartsWith("add_") || method.Name.StartsWith("remove_")))
                 continue;
+
+            var isAccessor = method.IsSpecialName &&
+                (method.Name.StartsWith("get_") || method.Name.StartsWith("set_"));
 
             var entity = new MethodEntity
             {
@@ -83,6 +84,7 @@ public static class MetadataCollector
                 IsStatic = method.IsStatic,
                 IsVirtual = method.IsVirtual,
                 IsAbstract = method.IsAbstract,
+                IsAccessor = isAccessor,
                 Accessibility = GetMethodAccessibility(method)
             };
 

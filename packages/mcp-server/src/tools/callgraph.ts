@@ -97,11 +97,25 @@ export async function getCallTree(args: Record<string, unknown>, config: Config)
 // --- 内部辅助 ---
 
 function resolveMethodIds(db: DatabaseSync, method: string): number[] {
+  // 1. 尝试 FullName 匹配
   const byFullName = db.prepare("SELECT Id FROM Methods WHERE FullName = ?").all(method) as unknown as { Id: number }[];
   if (byFullName.length > 0) return byFullName.map(r => r.Id);
 
+  // 2. 尝试 Signature 匹配
   const bySignature = db.prepare("SELECT Id FROM Methods WHERE Signature = ?").get(method) as unknown as { Id: number } | undefined;
   if (bySignature) return [bySignature.Id];
+
+  // 3. 尝试作为属性名 → 查找 get_X accessor
+  const lastDot = method.lastIndexOf(".");
+  if (lastDot > 0) {
+    const typeName = method.substring(0, lastDot);
+    const memberName = method.substring(lastDot + 1);
+    const accessor = db.prepare(
+      `SELECT m.Id FROM Methods m JOIN Types t ON m.TypeId = t.Id
+       WHERE t.FullName = ? AND (m.Name = ? OR m.Name = ?)`
+    ).all(typeName, `get_${memberName}`, `set_${memberName}`) as unknown as { Id: number }[];
+    if (accessor.length > 0) return accessor.map(r => r.Id);
+  }
 
   return [];
 }
