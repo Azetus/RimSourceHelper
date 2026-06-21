@@ -9,4 +9,6 @@ public class CollectionResult
     public List<TypeMetadata> Types { get; init; } = new();
     // Cecil MethodDefinition → 对应的 MethodEntity（Signature 已赋值，Id 未赋值）
     public Dictionary<MethodDefinition, MethodEntity> MethodMap { get; init; } = new();
+    // Cecil FieldDefinition → 对应的 FieldEntity（Id 未赋值）
+    public Dictionary<FieldDefinition, FieldEntity> FieldMap { get; init; } = new();
 }

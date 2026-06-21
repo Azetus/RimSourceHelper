@@ -15,6 +15,7 @@ public static class DatabaseInitializer
         connection.Execute(CreatePropertiesSql);
         connection.Execute(CreateInheritanceSql);
         connection.Execute(CreateCallsSql);
+        connection.Execute(CreateFieldAccessesSql);
         connection.Execute(CreateDefsSql);
         connection.Execute(CreateDefReferencesSql);
         connection.Execute(CreateHarmonyPatchesSql);
@@ -119,6 +120,17 @@ public static class DatabaseInitializer
         );
         CREATE INDEX IF NOT EXISTS idx_calls_caller ON Calls(CallerMethodId);
         CREATE INDEX IF NOT EXISTS idx_calls_callee ON Calls(CalleeMethodId);
+        """;
+
+    private const string CreateFieldAccessesSql = """
+        CREATE TABLE IF NOT EXISTS FieldAccesses (
+            MethodId   INTEGER NOT NULL REFERENCES Methods(Id),
+            FieldId    INTEGER NOT NULL REFERENCES Fields(Id),
+            AccessType TEXT NOT NULL,
+            PRIMARY KEY (MethodId, FieldId, AccessType)
+        );
+        CREATE INDEX IF NOT EXISTS idx_fieldaccess_method ON FieldAccesses(MethodId);
+        CREATE INDEX IF NOT EXISTS idx_fieldaccess_field ON FieldAccesses(FieldId);
         """;
 
     private const string CreateDefsSql = """

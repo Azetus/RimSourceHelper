@@ -27,4 +27,14 @@ public class FieldRepository(SqliteConnection connection)
         const string sql = "SELECT * FROM Fields WHERE TypeId = @typeId";
         return connection.Query<FieldEntity>(sql, new { typeId });
     }
+
+    // 获取 FieldSignature → Id 映射（TypeFullName + "." + Name，用于构建 FieldDefinition→Id 字典）
+    public Dictionary<string, long> GetSignatureToIdMap()
+    {
+        const string sql = "SELECT f.Id, (t.FullName || '.' || f.Name) as Signature FROM Fields f JOIN Types t ON f.TypeId = t.Id";
+        var map = new Dictionary<string, long>();
+        foreach (var row in connection.Query<(long Id, string Signature)>(sql))
+            map.TryAdd(row.Signature, row.Id);
+        return map;
+    }
 }

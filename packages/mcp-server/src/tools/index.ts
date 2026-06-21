@@ -68,7 +68,8 @@ export const toolDefinitions: Tool[] = [
       type: "object",
       properties: {
         method: { type: "string", description: "Method FullName or Signature" },
-        limit: { type: "number", description: "Max results (default: 50)" }
+        limit: { type: "number", description: "Max results (default: 50)" },
+        include_field_access: { type: "boolean", description: "Also return field/property accesses (default: false)" }
       },
       required: ["method"]
     }

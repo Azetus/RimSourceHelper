@@ -139,8 +139,20 @@ public static class AddModCommand
                     }
                     Log($"[INFO] Built method mapping: {methodDefToId.Count} entries.");
 
-                    var callPairs = CallGraphAnalyzer.Analyze(assemblies, methodDefToId, Log);
-                    callCount = CallGraphWriter.Write(db, callPairs, Log);
+                    var fieldSigToId = db.Fields.GetSignatureToIdMap();
+                    var fieldDefToId = new Dictionary<FieldDefinition, long>();
+                    foreach (var (def, entity) in collection.FieldMap)
+                    {
+                        var sig = $"{def.DeclaringType.FullName}.{def.Name}";
+                        if (fieldSigToId.TryGetValue(sig, out var id))
+                            fieldDefToId[def] = id;
+                    }
+                    Log($"[INFO] Built field mapping: {fieldDefToId.Count} entries.");
+
+                    var graphResult = CallGraphAnalyzer.Analyze(assemblies, methodDefToId, fieldDefToId, Log);
+                    callCount = CallGraphWriter.Write(db, graphResult.Calls, Log);
+                    if (graphResult.FieldAccesses.Count > 0)
+                        db.FieldAccesses.BulkInsert(graphResult.FieldAccesses);
 
                     // Harmony Patch 分析
                     var patches = HarmonyAnalyzer.Analyze(assemblies, Log);

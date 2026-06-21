@@ -2,7 +2,7 @@ import type {
   TargetSearchResult, TypeInfoResult, MethodInfoResult, MethodReference,
   TypeMembersResult, MemberMethod, MemberField, MemberProperty,
   CallTreeNode, DefSummary, DefDetails, DefTypeCount,
-  HarmonyPatchResult, SourceResult
+  HarmonyPatchResult, FieldAccessEntry, SourceResult
 } from "../types.js";
 
 // --- find_target ---
@@ -183,6 +183,16 @@ export function formatMethodList(methods: MethodReference[], title: string): str
   if (methods.length === 0) return `${title}\nNone.`;
   const lines: string[] = [title];
   for (const m of methods) lines.push(`- \`${m.Signature}\` — ${m.Source}`);
+  return lines.join("\n");
+}
+
+// --- field accesses ---
+export function formatFieldAccesses(accesses: FieldAccessEntry[], title: string): string {
+  if (accesses.length === 0) return `${title}\nNone.`;
+  const lines: string[] = [title];
+  for (const a of accesses) {
+    lines.push(`- \`${a.MethodFullName}\` → \`${a.TypeFullName}.${a.Name}\` [${a.AccessType}] : ${a.FieldType} — ${a.Source}`);
+  }
   return lines.join("\n");
 }
 

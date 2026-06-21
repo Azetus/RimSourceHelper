@@ -118,9 +118,25 @@ public static class BuildCommand
             }
             Log($"[INFO] Built method mapping: {methodDefToId.Count} entries.");
 
-            // 调用图分析
-            var callPairs = CallGraphAnalyzer.Analyze(assemblies, methodDefToId, Log);
-            var callCount = CallGraphWriter.Write(db, callPairs, Log);
+            // 构建 FieldDefinition → Id 映射
+            var fieldSigToId = db.Fields.GetSignatureToIdMap();
+            var fieldDefToId = new Dictionary<FieldDefinition, long>();
+            foreach (var (def, entity) in collection.FieldMap)
+            {
+                var sig = $"{def.DeclaringType.FullName}.{def.Name}";
+                if (fieldSigToId.TryGetValue(sig, out var id))
+                    fieldDefToId[def] = id;
+            }
+            Log($"[INFO] Built field mapping: {fieldDefToId.Count} entries.");
+
+            // 调用图分析（含字段访问）
+            var graphResult = CallGraphAnalyzer.Analyze(assemblies, methodDefToId, fieldDefToId, Log);
+            var callCount = CallGraphWriter.Write(db, graphResult.Calls, Log);
+            if (graphResult.FieldAccesses.Count > 0)
+            {
+                var faCount = db.FieldAccesses.BulkInsert(graphResult.FieldAccesses);
+                Log($"[INFO] Inserted {faCount} field accesses.");
+            }
 
             // Defs 解析（Core + DLCs）
             var allDefs = new List<DefEntity>();

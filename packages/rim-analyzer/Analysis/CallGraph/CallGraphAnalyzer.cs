@@ -4,30 +4,40 @@ using Mono.Cecil.Cil;
 
 namespace RimAnalyzer.Analysis.CallGraph;
 
+public record CallGraphResult(
+    List<(long CallerId, long CalleeId)> Calls,
+    List<(long MethodId, long FieldId, string AccessType)> FieldAccesses
+);
+
 // IL 调用图分析：扫描方法体指令，通过 Resolve() 做对象级匹配
 public static partial class CallGraphAnalyzer
 {
-    public static List<(long CallerId, long CalleeId)> Analyze(
+    public static CallGraphResult Analyze(
         IReadOnlyList<AssemblyDefinition> assemblies,
         Dictionary<MethodDefinition, long> methodDefToId,
+        Dictionary<FieldDefinition, long> fieldDefToId,
         Action<string> log)
     {
-        var result = new HashSet<(long, long)>();
+        var calls = new HashSet<(long, long)>();
+        var fieldAccesses = new HashSet<(long MethodId, long FieldId, string AccessType)>();
         var resolveFailures = 0;
 
         foreach (var asm in assemblies)
         {
             foreach (var type in asm.MainModule.Types)
-                ScanTypeRecursive(type, methodDefToId, result, ref resolveFailures);
+                ScanTypeRecursive(type, methodDefToId, fieldDefToId, calls, fieldAccesses, ref resolveFailures);
         }
 
-        log($"[INFO] Call graph: {result.Count} unique edges, {resolveFailures} unresolved references skipped.");
-        return result.ToList();
+        log($"[INFO] Call graph: {calls.Count} call edges, {fieldAccesses.Count} field accesses, {resolveFailures} unresolved skipped.");
+        return new CallGraphResult(calls.ToList(), fieldAccesses.ToList());
     }
 
     private static void ScanTypeRecursive(TypeDefinition type,
         Dictionary<MethodDefinition, long> methodDefToId,
-        HashSet<(long, long)> result, ref int resolveFailures)
+        Dictionary<FieldDefinition, long> fieldDefToId,
+        HashSet<(long, long)> calls,
+        HashSet<(long, long, string)> fieldAccesses,
+        ref int resolveFailures)
     {
         foreach (var method in type.Methods)
         {
@@ -41,53 +51,59 @@ public static partial class CallGraphAnalyzer
 
             foreach (var instruction in method.Body.Instructions)
             {
-                if (!IsCallOpCode(instruction.OpCode))
-                    continue;
-
-                if (instruction.Operand is not MethodReference calleeRef)
-                    continue;
-
-                MethodDefinition? calleeDef;
-                try
+                // 方法调用分析
+                if (IsCallOpCode(instruction.OpCode))
                 {
-                    calleeDef = calleeRef.Resolve();
+                    if (instruction.Operand is MethodReference calleeRef)
+                    {
+                        var calleeDef = TryResolve(calleeRef, ref resolveFailures);
+                        if (calleeDef is not null && methodDefToId.TryGetValue(calleeDef, out var calleeId))
+                            calls.Add((callerId.Value, calleeId));
+                    }
                 }
-                catch
+                // 字段访问分析
+                else if (IsFieldAccessOpCode(instruction.OpCode))
                 {
-                    // Resolve 可能因程序集加载问题抛异常
-                    resolveFailures++;
-                    continue;
+                    if (instruction.Operand is FieldReference fieldRef)
+                    {
+                        var fieldDef = TryResolve(fieldRef, ref resolveFailures);
+                        if (fieldDef is not null && fieldDefToId.TryGetValue(fieldDef, out var fieldId))
+                        {
+                            var accessType = (instruction.OpCode == OpCodes.Stfld || instruction.OpCode == OpCodes.Stsfld)
+                                ? "write" : "read";
+                            fieldAccesses.Add((callerId.Value, fieldId, accessType));
+                        }
+                    }
                 }
-
-                if (calleeDef is null)
-                {
-                    resolveFailures++;
-                    continue;
-                }
-
-                if (methodDefToId.TryGetValue(calleeDef, out var calleeId))
-                    result.Add((callerId.Value, calleeId));
             }
         }
 
-        // 递归处理嵌套类型
         foreach (var nested in type.NestedTypes)
-            ScanTypeRecursive(nested, methodDefToId, result, ref resolveFailures);
+            ScanTypeRecursive(nested, methodDefToId, fieldDefToId, calls, fieldAccesses, ref resolveFailures);
+    }
+
+    private static MethodDefinition? TryResolve(MethodReference methodRef, ref int resolveFailures)
+    {
+        try { return methodRef.Resolve(); }
+        catch { resolveFailures++; return null; }
+    }
+
+    private static FieldDefinition? TryResolve(FieldReference fieldRef, ref int resolveFailures)
+    {
+        try { return fieldRef.Resolve(); }
+        catch { resolveFailures++; return null; }
     }
 
     // 解析 caller 的数据库 Id，含 Lambda/闭包归属逻辑
     private static long? ResolveCallerId(MethodDefinition method, Dictionary<MethodDefinition, long> methodDefToId)
     {
-        // 正常方法：直接查找
         if (methodDefToId.TryGetValue(method, out var directId))
             return directId;
 
-        // 闭包方法：尝试归属到父方法
         var declaringType = method.DeclaringType;
         if (declaringType is null || !IsCompilerGeneratedClosure(declaringType.Name))
             return null;
 
-        // 从方法名 "<Kill>b__0" 中提取 "Kill"
         var match = ClosureMethodPattern().Match(method.Name);
         if (!match.Success)
             return null;
@@ -97,7 +113,6 @@ public static partial class CallGraphAnalyzer
         if (parentType is null)
             return null;
 
-        // 在外层类型中查找同名方法
         var parentMethod = parentType.Methods.FirstOrDefault(m => m.Name == parentMethodName);
         if (parentMethod is not null && methodDefToId.TryGetValue(parentMethod, out var parentId))
             return parentId;
@@ -113,12 +128,21 @@ public static partial class CallGraphAnalyzer
             || opCode == OpCodes.Ldftn;
     }
 
+    private static bool IsFieldAccessOpCode(OpCode opCode)
+    {
+        return opCode == OpCodes.Ldfld
+            || opCode == OpCodes.Stfld
+            || opCode == OpCodes.Ldsfld
+            || opCode == OpCodes.Stsfld
+            || opCode == OpCodes.Ldflda
+            || opCode == OpCodes.Ldsflda;
+    }
+
     private static bool IsCompilerGeneratedClosure(string typeName)
     {
         return typeName.Contains("<>c__DisplayClass") || typeName == "<>c";
     }
 
-    // 匹配闭包方法名模式：<ParentMethodName>b__N 或 <ParentMethodName>g__LocalFuncName|N
     [GeneratedRegex(@"^<(\w+)>[bg]__")]
     private static partial Regex ClosureMethodPattern();
 }

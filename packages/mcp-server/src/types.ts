@@ -166,6 +166,17 @@ export interface HarmonyPatchResult {
   Source: string;
 }
 
+// --- field accesses ---
+export interface FieldAccessEntry {
+  MethodFullName: string;
+  MethodSignature: string;
+  TypeFullName: string;
+  Name: string;
+  FieldType: string;
+  AccessType: string;   // "read" | "write"
+  Source: string;
+}
+
 // --- sources ---
 export interface SourceResult {
   Name: string;

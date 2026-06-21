@@ -10,26 +10,28 @@ public static class MetadataCollector
     {
         var types = new List<TypeMetadata>();
         var methodMap = new Dictionary<MethodDefinition, MethodEntity>();
+        var fieldMap = new Dictionary<FieldDefinition, FieldEntity>();
 
         foreach (var asm in assemblies)
         {
             log($"[INFO] Scanning assembly: {asm.Name.Name}");
 
             foreach (var type in asm.MainModule.Types)
-                CollectTypeRecursive(type, asm.Name.Name, types, methodMap);
+                CollectTypeRecursive(type, asm.Name.Name, types, methodMap, fieldMap);
         }
 
         log($"[INFO] Collected {types.Count} types, " +
             $"{methodMap.Count} methods, " +
-            $"{types.Sum(t => t.Fields.Count)} fields, " +
+            $"{fieldMap.Count} fields, " +
             $"{types.Sum(t => t.Properties.Count)} properties");
 
-        return new CollectionResult { Types = types, MethodMap = methodMap };
+        return new CollectionResult { Types = types, MethodMap = methodMap, FieldMap = fieldMap };
     }
 
     // 收集单个类型并递归处理嵌套类型
     private static void CollectTypeRecursive(TypeDefinition type, string assemblyName,
-        List<TypeMetadata> output, Dictionary<MethodDefinition, MethodEntity> methodMap)
+        List<TypeMetadata> output, Dictionary<MethodDefinition, MethodEntity> methodMap,
+        Dictionary<FieldDefinition, FieldEntity> fieldMap)
     {
         if (type.Name == "<Module>")
             return;
@@ -53,14 +55,14 @@ public static class MetadataCollector
         };
 
         CollectMethods(type, meta, methodMap);
-        CollectFields(type, meta);
+        CollectFields(type, meta, fieldMap);
         CollectProperties(type, meta);
 
         output.Add(meta);
 
         // 递归收集嵌套类型
         foreach (var nested in type.NestedTypes)
-            CollectTypeRecursive(nested, assemblyName, output, methodMap);
+            CollectTypeRecursive(nested, assemblyName, output, methodMap, fieldMap);
     }
 
     private static void CollectMethods(TypeDefinition type, TypeMetadata meta,
@@ -93,17 +95,20 @@ public static class MetadataCollector
         }
     }
 
-    private static void CollectFields(TypeDefinition type, TypeMetadata meta)
+    private static void CollectFields(TypeDefinition type, TypeMetadata meta,
+        Dictionary<FieldDefinition, FieldEntity> fieldMap)
     {
         foreach (var field in type.Fields)
         {
-            meta.Fields.Add(new FieldEntity
+            var entity = new FieldEntity
             {
                 Name = field.Name,
                 FieldType = field.FieldType.FullName,
                 IsStatic = field.IsStatic,
                 Accessibility = GetFieldAccessibility(field)
-            });
+            };
+            meta.Fields.Add(entity);
+            fieldMap[field] = entity;
         }
     }
 
