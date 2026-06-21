@@ -11,12 +11,12 @@ export const toolDefinitions: Tool[] = [
   // --- 搜索与发现 ---
   {
     name: "find_target",
-    description: "Search types and methods by name (fuzzy match). Returns summary list.",
+    description: "Search types/methods/fields/properties by name. Supports FullName exact match and relevance ranking. Use kind to filter.",
     inputSchema: {
       type: "object",
       properties: {
         query: { type: "string", description: "Search keyword" },
-        kind: { type: "string", enum: ["type", "method"], description: "Filter by kind" },
+        kind: { type: "string", enum: ["type", "method", "field", "property"], description: "Filter by kind" },
         source: { type: "string", description: "Filter by source name" },
         limit: { type: "number", description: "Max results per kind (default: 20)" }
       },
@@ -25,7 +25,7 @@ export const toolDefinitions: Tool[] = [
   },
   {
     name: "get_target_info",
-    description: "Get full information about a type or method: metadata, inheritance/calls, harmony patches, and optionally decompiled source.",
+    description: "Get full info about a type or method: metadata, inheritance, callers/callees, harmony patches. Set include_source=true for decompiled code (slower).",
     inputSchema: {
       type: "object",
       properties: {
@@ -37,7 +37,7 @@ export const toolDefinitions: Tool[] = [
   },
   {
     name: "list_type_members",
-    description: "List all members (methods, fields, properties) of a type.",
+    description: "List all members (methods, fields, properties) of a type. For field default values, use decompile_target.",
     inputSchema: {
       type: "object",
       properties: {
@@ -90,7 +90,7 @@ export const toolDefinitions: Tool[] = [
   // --- Defs ---
   {
     name: "search_defs",
-    description: "Search Defs by name. Returns summary list (DefName, DefType, Label, Source).",
+    description: "Search Defs by name, or browse all Defs of a type with empty query and def_type filter.",
     inputSchema: {
       type: "object",
       properties: {
@@ -137,7 +137,7 @@ export const toolDefinitions: Tool[] = [
   // --- Harmony ---
   {
     name: "find_harmony_patches",
-    description: "Find Harmony patches targeting a specific type or method.",
+    description: "Find Harmony patches targeting a specific type or method. Shows parameter types for overload disambiguation.",
     inputSchema: {
       type: "object",
       properties: {
@@ -161,7 +161,7 @@ export const toolDefinitions: Tool[] = [
   // --- 源码 ---
   {
     name: "decompile_target",
-    description: "Decompile a type or method on demand. Returns only source code without metadata.",
+    description: "Decompile a type or method on demand. Returns only source code. Use this to see field default values and implementation details.",
     inputSchema: {
       type: "object",
       properties: {

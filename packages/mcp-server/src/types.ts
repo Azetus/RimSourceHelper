@@ -2,7 +2,7 @@
 
 // --- find_target ---
 export interface TargetSearchResult {
-  Kind: "type" | "method";
+  Kind: "type" | "method" | "field" | "property";
   FullName: string;
   Name: string;
   Namespace?: string | null;
@@ -10,6 +10,12 @@ export interface TargetSearchResult {
   IsInterface?: number;
   Signature?: string;
   ReturnType?: string;
+  TypeFullName?: string;
+  FieldType?: string;
+  PropertyType?: string;
+  IsStatic?: number;
+  HasGetter?: number;
+  HasSetter?: number;
   Source: string;
 }
 

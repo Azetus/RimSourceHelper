@@ -11,6 +11,8 @@ export function formatFindTarget(results: TargetSearchResult[]): string {
 
   const types = results.filter(r => r.Kind === "type");
   const methods = results.filter(r => r.Kind === "method");
+  const fields = results.filter(r => r.Kind === "field");
+  const properties = results.filter(r => r.Kind === "property");
   const lines: string[] = [];
 
   if (types.length > 0) {
@@ -18,9 +20,25 @@ export function formatFindTarget(results: TargetSearchResult[]): string {
     for (const t of types) lines.push(`- \`${t.FullName}\` — ${t.Source}`);
   }
   if (methods.length > 0) {
-    if (types.length > 0) lines.push("");
+    if (lines.length > 0) lines.push("");
     lines.push(`## Methods (${methods.length})`);
     for (const m of methods) lines.push(`- \`${m.Signature ?? m.FullName}\` — ${m.Source}`);
+  }
+  if (fields.length > 0) {
+    if (lines.length > 0) lines.push("");
+    lines.push(`## Fields (${fields.length})`);
+    for (const f of fields) {
+      const mod = f.IsStatic ? "static " : "";
+      lines.push(`- \`${f.TypeFullName}.${f.Name}\` ${mod}: ${f.FieldType} — ${f.Source}`);
+    }
+  }
+  if (properties.length > 0) {
+    if (lines.length > 0) lines.push("");
+    lines.push(`## Properties (${properties.length})`);
+    for (const p of properties) {
+      const accessors = [p.HasGetter ? "get" : "", p.HasSetter ? "set" : ""].filter(Boolean).join("/");
+      lines.push(`- \`${p.TypeFullName}.${p.Name}\` { ${accessors} } : ${p.PropertyType} — ${p.Source}`);
+    }
   }
 
   return lines.join("\n");

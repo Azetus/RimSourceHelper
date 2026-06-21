@@ -15,7 +15,7 @@ export async function findTarget(args: Record<string, unknown>, config: Config) 
   const results = withDatabase(config.databasePath, (db) => {
     const items: TargetSearchResult[] = [];
 
-    if (kind !== "method") {
+    if (kind !== "method" && kind !== "field" && kind !== "property") {
       const sql = source
         ? `SELECT 'type' as Kind, t.FullName, t.Name, t.Namespace, t.IsAbstract, t.IsInterface, s.Name as Source
            FROM Types t JOIN Sources s ON t.SourceId = s.Id
@@ -33,7 +33,7 @@ export async function findTarget(args: Record<string, unknown>, config: Config) 
       items.push(...db.prepare(sql).all(...params) as unknown as TargetSearchResult[]);
     }
 
-    if (kind !== "type") {
+    if (kind !== "type" && kind !== "field" && kind !== "property") {
       const sql = source
         ? `SELECT 'method' as Kind, m.FullName, m.Name, m.Signature, m.ReturnType, s.Name as Source
            FROM Methods m JOIN Sources s ON m.SourceId = s.Id
@@ -48,6 +48,42 @@ export async function findTarget(args: Record<string, unknown>, config: Config) 
       const params: (string | number)[] = source
         ? [`%${query}%`, query, source, query, query, `${query}%`, limit]
         : [`%${query}%`, query, query, query, `${query}%`, limit];
+      items.push(...db.prepare(sql).all(...params) as unknown as TargetSearchResult[]);
+    }
+
+    if (kind === "field") {
+      const sql = source
+        ? `SELECT 'field' as Kind, f.Name, t.FullName as TypeFullName, f.FieldType, f.IsStatic, s.Name as Source
+           FROM Fields f JOIN Types t ON f.TypeId = t.Id JOIN Sources s ON f.SourceId = s.Id
+           WHERE f.Name LIKE ? AND s.Name = ?
+           ORDER BY CASE WHEN f.Name = ? THEN 0 WHEN f.Name LIKE ? THEN 1 ELSE 2 END, f.Name
+           LIMIT ?`
+        : `SELECT 'field' as Kind, f.Name, t.FullName as TypeFullName, f.FieldType, f.IsStatic, s.Name as Source
+           FROM Fields f JOIN Types t ON f.TypeId = t.Id JOIN Sources s ON f.SourceId = s.Id
+           WHERE f.Name LIKE ?
+           ORDER BY CASE WHEN f.Name = ? THEN 0 WHEN f.Name LIKE ? THEN 1 ELSE 2 END, f.Name
+           LIMIT ?`;
+      const params: (string | number)[] = source
+        ? [`%${query}%`, source, query, `${query}%`, limit]
+        : [`%${query}%`, query, `${query}%`, limit];
+      items.push(...db.prepare(sql).all(...params) as unknown as TargetSearchResult[]);
+    }
+
+    if (kind === "property") {
+      const sql = source
+        ? `SELECT 'property' as Kind, p.Name, t.FullName as TypeFullName, p.PropertyType, p.HasGetter, p.HasSetter, s.Name as Source
+           FROM Properties p JOIN Types t ON p.TypeId = t.Id JOIN Sources s ON p.SourceId = s.Id
+           WHERE p.Name LIKE ? AND s.Name = ?
+           ORDER BY CASE WHEN p.Name = ? THEN 0 WHEN p.Name LIKE ? THEN 1 ELSE 2 END, p.Name
+           LIMIT ?`
+        : `SELECT 'property' as Kind, p.Name, t.FullName as TypeFullName, p.PropertyType, p.HasGetter, p.HasSetter, s.Name as Source
+           FROM Properties p JOIN Types t ON p.TypeId = t.Id JOIN Sources s ON p.SourceId = s.Id
+           WHERE p.Name LIKE ?
+           ORDER BY CASE WHEN p.Name = ? THEN 0 WHEN p.Name LIKE ? THEN 1 ELSE 2 END, p.Name
+           LIMIT ?`;
+      const params: (string | number)[] = source
+        ? [`%${query}%`, source, query, `${query}%`, limit]
+        : [`%${query}%`, query, `${query}%`, limit];
       items.push(...db.prepare(sql).all(...params) as unknown as TargetSearchResult[]);
     }
 
