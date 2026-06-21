@@ -81,21 +81,21 @@ After connecting, ask the agent to call `build_database` to initialize the knowl
 ### Search & Discovery
 | Tool | Description |
 |------|-------------|
-| `find_target` | Fuzzy search types/methods with relevance ranking |
-| `get_target_info` | Full metadata + inheritance + callers/callees + patches |
-| `list_type_members` | List methods, fields, properties of a type |
+| `find_target` | Search types/methods/fields/properties by name with relevance ranking |
+| `get_target_info` | Full metadata + inheritance + callers/callees + patches + decompiled source |
+| `list_type_members` | List all members of a type |
 
 ### Call Graph
 | Tool | Description |
 |------|-------------|
-| `get_callers` | Direct callers of a method |
-| `get_callees` | Direct callees of a method |
+| `get_callers` | Find callers of a method, field, or property |
+| `get_callees` | Find callees of a method; optionally include field/property accesses |
 | `get_call_tree` | Recursive call tree with cycle detection |
 
 ### Defs
 | Tool | Description |
 |------|-------------|
-| `search_defs` | Search Defs by name |
+| `search_defs` | Search Defs by name or browse all of a DefType |
 | `get_def_details` | Full Def details with raw XML |
 | `list_def_types` | All DefTypes with counts |
 | `find_def_references` | Find Defs referencing a target Def |
@@ -103,13 +103,13 @@ After connecting, ask the agent to call `build_database` to initialize the knowl
 ### Harmony Patches
 | Tool | Description |
 |------|-------------|
-| `find_harmony_patches` | Find patches on a target type/method |
+| `find_harmony_patches` | Find patches on a target type/method with parameter type info |
 | `list_harmony_patches` | List patches by source mod |
 
 ### Source Code
 | Tool | Description |
 |------|-------------|
-| `decompile_target` | On-demand decompilation (type or method) |
+| `decompile_target` | Decompile a type or method; shows field default values |
 
 ### Database Management
 | Tool | Description |

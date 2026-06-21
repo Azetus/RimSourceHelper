@@ -44,7 +44,7 @@ rim-analyzer build --game-path <path> --output <path> [--verbose]
 $ rim-analyzer build --game-path "D:\Steam\steamapps\common\RimWorld" --output "./rimworld.db"
 ```
 ```json
-{"status":"success","types":16157,"methods":79712,"calls":153596,"defs":13809}
+{"status":"success","types":16157,"methods":90777,"calls":228834,"defs":13809}
 ```
 
 ---
@@ -68,7 +68,7 @@ rim-analyzer add-mod --mod-path <path> --db <path> --game-path <path> [--verbose
 $ rim-analyzer add-mod --mod-path "D:\Steam\steamapps\common\RimWorld\Mods\VanillaFireModes" --db "./rimworld.db" --game-path "D:\Steam\steamapps\common\RimWorld"
 ```
 ```json
-{"status":"success","types":39,"methods":145,"calls":128,"defs":0}
+{"status":"success","types":39,"methods":155,"calls":159,"defs":0}
 ```
 
 ---

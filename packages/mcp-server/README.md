@@ -21,18 +21,14 @@ Add to your `opencode.json`:
 
 ### `find_target`
 
-Fuzzy search types and methods with relevance ranking (exact → prefix → contains).
+Fuzzy search types, methods, fields, or properties. Supports kind filter and relevance ranking.
 
 ```
-find_target(query: "Pawn", kind: "type", limit: 5)
+find_target(query: "isFighter", kind: "field", limit: 5)
 ```
 ```
-## Types (5)
-- `Verse.Pawn` — RimWorld Core
-- `RimWorld.PawnActivityWorker` — RimWorld Core
-- `RimWorld.PawnAddictionHediffsGenerator` — RimWorld Core
-- `RimWorld.PawnApparelGenerator` — RimWorld Core
-- `RimWorld.PawnAttackGizmoUtility` — RimWorld Core
+## Fields (1)
+- `Verse.PawnKindDef.isFighter` : System.Boolean — RimWorld Core
 ```
 
 ---
@@ -112,7 +108,7 @@ list_type_members(type_name: "Verse.Verb", kind: "methods")
 
 ### `get_callers`
 
-Direct callers of a method.
+Find callers of a method, field, or property. Auto-detects target type.
 
 ```
 get_callers(method: "Verse.Verb.WarmupComplete", limit: 5)
@@ -120,15 +116,26 @@ get_callers(method: "Verse.Verb.WarmupComplete", limit: 5)
 ```
 ## Callers of Verse.Verb.WarmupComplete (3)
 - `System.Void Verse.Stance_Warmup.Expire()` — RimWorld Core
-- `System.Boolean Verse.Verb.TryStartCastOn(Verse.LocalTargetInfo,Verse.LocalTargetInfo,System.Boolean,System.Boolean,System.Boolean,System.Boolean)` — RimWorld Core
+- `System.Boolean Verse.Verb.TryStartCastOn(...)` — RimWorld Core
 - `System.Void Verse.Verb_LaunchProjectile.WarmupComplete()` — RimWorld Core
+```
+
+Also supports fields and properties:
+```
+get_callers(method: "Verse.PawnKindDef.isFighter", limit: 5)
+```
+```
+## References to Verse.PawnKindDef.isFighter (field) (5)
+- `RimWorld.MechClusterGenerator.MechKindSuitableForCluster` → `Verse.PawnKindDef.isFighter` [read] : System.Boolean — RimWorld Core
+- `RimWorld.PawnGroupMakerUtility.PawnGenOptionValid` → `Verse.PawnKindDef.isFighter` [read] : System.Boolean — RimWorld Core
+- ...
 ```
 
 ---
 
 ### `get_callees`
 
-Direct callees of a method.
+Direct callees of a method. Set `include_field_access=true` to also see field/property accesses.
 
 ```
 get_callees(method: "Verse.Pawn.Kill", limit: 5)
@@ -137,9 +144,20 @@ get_callees(method: "Verse.Pawn.Kill", limit: 5)
 ## Callees of Verse.Pawn.Kill (5)
 - `System.Boolean MechanitorUtility.IsMechanitor(Verse.Pawn)` — RimWorld Core
 - `System.Void RimWorld.BillUtility.Notify_ColonistUnavailable(Verse.Pawn)` — RimWorld Core
-- `System.Void RimWorld.ColonistBar.MarkColonistsDirty()` — RimWorld Core
-- `System.Void RimWorld.CompRottable.RotImmediately(RimWorld.RotStage)` — RimWorld Core
-- `System.Void RimWorld.Faction.Notify_MemberDied(Verse.Pawn,...)` — RimWorld Core
+- ...
+```
+
+```
+get_callees(method: "Verse.Verb.WarmupComplete", include_field_access: true)
+```
+```
+## Callees of Verse.Verb.WarmupComplete (2)
+- `System.Void Verse.Verb.TryCastNextBurstShot()` — RimWorld Core
+- `System.Int32 Verse.Verb.get_ShotsPerBurst()` — RimWorld Core
+
+## Field Accesses (2)
+- `Verse.Verb.WarmupComplete` → `Verse.Verb.burstShotsLeft` [write] : System.Int32 — RimWorld Core
+- `Verse.Verb.WarmupComplete` → `Verse.Verb.state` [write] : Verse.VerbState — RimWorld Core
 ```
 
 ---
