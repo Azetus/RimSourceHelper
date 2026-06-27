@@ -19,6 +19,7 @@ public class DatabaseContext : IDisposable
     public DefReferenceRepository DefReferences { get; }
     public HarmonyPatchRepository HarmonyPatches { get; }
     public FieldAccessRepository FieldAccesses { get; }
+    public XmlPatchRepository XmlPatches { get; }
     public MetadataRepository Metadata { get; }
 
     private DatabaseContext(SqliteConnection connection)
@@ -35,6 +36,7 @@ public class DatabaseContext : IDisposable
         DefReferences = new DefReferenceRepository(connection);
         HarmonyPatches = new HarmonyPatchRepository(connection);
         FieldAccesses = new FieldAccessRepository(connection);
+        XmlPatches = new XmlPatchRepository(connection);
         Metadata = new MetadataRepository(connection);
     }
 

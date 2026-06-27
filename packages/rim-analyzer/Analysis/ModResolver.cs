@@ -180,7 +180,13 @@ public class ModResolver
         return result;
     }
 
-    // ===== 文件扫描（目录列表 + TryAdd 去重）=====
+    // ===== 文件扫描（照搬 RimWorld：每个 load folder 只扫描特定子文件夹）=====
+
+    // 需要递归扫描的子文件夹名
+    private static readonly HashSet<string> ScanSubFolders = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "Defs", "Patches", "Assemblies"
+    };
 
     private void FindAssemblies(List<string> loadDirs)
     {
@@ -203,7 +209,7 @@ public class ModResolver
             .ToList();
     }
 
-    private List<string> ScanFiles(string pattern, List<string> loadDirs)
+    private static List<string> ScanFiles(string pattern, List<string> loadDirs)
     {
         var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var result = new List<string>();
@@ -213,15 +219,31 @@ public class ModResolver
             if (!Directory.Exists(dir))
                 continue;
 
-            foreach (var file in Directory.GetFiles(dir, pattern, SearchOption.AllDirectories))
+            // 1. 扫描 load folder 根目录的直接文件（非递归）
+            foreach (var file in Directory.GetFiles(dir, pattern, SearchOption.TopDirectoryOnly))
             {
-                var parentDir = Path.GetFileName(Path.GetDirectoryName(file));
-                if (parentDir is not null && SkipDirs.Contains(parentDir))
+                var key = Path.GetRelativePath(dir, file);
+                if (seen.Add(key))
+                    result.Add(file);
+            }
+
+            // 2. 递归扫描 Defs/、Patches/、Assemblies/ 子文件夹
+            foreach (var sub in ScanSubFolders)
+            {
+                var subDir = Path.Combine(dir, sub);
+                if (!Directory.Exists(subDir))
                     continue;
 
-                var relPath = Path.GetRelativePath(dir, file);
-                if (seen.Add(relPath))
-                    result.Add(file);
+                foreach (var file in Directory.GetFiles(subDir, pattern, SearchOption.AllDirectories))
+                {
+                    var parentDir = Path.GetFileName(Path.GetDirectoryName(file));
+                    if (parentDir is not null && SkipDirs.Contains(parentDir))
+                        continue;
+
+                    var key = Path.GetRelativePath(dir, file);
+                    if (seen.Add(key))
+                        result.Add(file);
+                }
             }
         }
 

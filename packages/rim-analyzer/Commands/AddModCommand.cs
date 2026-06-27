@@ -176,6 +176,14 @@ public static class AddModCommand
         var modDefs = DefParser.ParseFiles(mod.DefFiles, mod.ModRoot, sourceId, Log);
         var defResult = DefWriter.Write(db, modDefs, Log);
 
+        // XML Patches 解析
+        var xmlPatches = XmlPatchParser.ParseFiles(mod.PatchFiles, mod.ModRoot, sourceId, Log);
+        if (xmlPatches.Count > 0)
+        {
+            var xmlPatchCount = db.XmlPatches.BulkInsert(xmlPatches);
+            Log($"[INFO] Inserted {xmlPatchCount} XML patches.");
+        }
+
         Log("[INFO] Mod added successfully.");
 
         return new BuildResult
@@ -193,6 +201,7 @@ public static class AddModCommand
     {
         var conn = db.Connection;
         using var transaction = conn.BeginTransaction();
+        Dapper.SqlMapper.Execute(conn, "DELETE FROM XmlPatches WHERE SourceId = @sourceId", new { sourceId }, transaction);
         Dapper.SqlMapper.Execute(conn, "DELETE FROM HarmonyPatches WHERE SourceId = @sourceId", new { sourceId }, transaction);
         Dapper.SqlMapper.Execute(conn, "DELETE FROM Calls WHERE CallerMethodId IN (SELECT Id FROM Methods WHERE SourceId = @sourceId) OR CalleeMethodId IN (SELECT Id FROM Methods WHERE SourceId = @sourceId)", new { sourceId }, transaction);
         Dapper.SqlMapper.Execute(conn, "DELETE FROM Inheritance WHERE ParentTypeId IN (SELECT Id FROM Types WHERE SourceId = @sourceId) OR ChildTypeId IN (SELECT Id FROM Types WHERE SourceId = @sourceId)", new { sourceId }, transaction);

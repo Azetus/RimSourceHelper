@@ -4,6 +4,7 @@ import { findTarget, getTargetInfo, listTypeMembers, decompile } from "./search.
 import { getCallers, getCallees, getCallTree } from "./callgraph.js";
 import { searchDefs, getDefDetails, listDefTypes, findDefReferences } from "./defs.js";
 import { findHarmonyPatches, listHarmonyPatches } from "./harmony.js";
+import { findXmlPatches, listXmlPatches } from "./defs.js";
 import { buildDatabase, addMod, removeMod, listSources } from "./management.js";
 
 // 全部 16 个工具的定义
@@ -174,6 +175,35 @@ export const toolDefinitions: Tool[] = [
 
   // --- 数据库管理 ---
   {
+    name: "list_xml_patches",
+    description: "List XML Patches from a specific mod with pagination.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        source: { type: "string", description: "Mod name" },
+        offset: { type: "number", description: "Starting position (default: 0)" },
+        limit: { type: "number", description: "Max results per page (default: 50)" }
+      },
+      required: ["source"]
+    }
+  },
+  {
+    name: "find_xml_patches",
+    description: "Find XML Patches by def_name. Set include_raw=true for full XML.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        def_name: { type: "string", description: "DefName to search in XPath" },
+        source: { type: "string", description: "Filter by source name" },
+        include_raw: { type: "boolean", description: "Return full RawXml (default: false)" },
+        limit: { type: "number", description: "Max results (default: 50)" }
+      },
+      required: ["def_name"]
+    }
+  },
+
+  // --- 数据库管理 ---
+  {
     name: "build_database",
     description: "Build/rebuild the knowledge database from RimWorld game files. Paths are read from server config.",
     inputSchema: {
@@ -236,7 +266,8 @@ export async function handleToolCall(
     case "find_def_references": return findDefReferences(safeArgs, config);
     case "find_harmony_patches": return findHarmonyPatches(safeArgs, config);
     case "list_harmony_patches": return listHarmonyPatches(safeArgs, config);
-    case "decompile_target": return decompile(safeArgs, config);
+    case "list_xml_patches": return listXmlPatches(safeArgs, config);
+    case "find_xml_patches": return findXmlPatches(safeArgs, config);
     case "build_database": return buildDatabase(safeArgs, config);
     case "add_mod": return addMod(safeArgs, config);
     case "remove_mod": return removeMod(safeArgs, config);

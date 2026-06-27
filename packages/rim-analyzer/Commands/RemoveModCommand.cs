@@ -70,6 +70,7 @@ public static class RemoveModCommand
 
         // 事务保护：原子删除所有关联数据
         using var transaction = conn.BeginTransaction();
+        conn.Execute("DELETE FROM XmlPatches WHERE SourceId = @sourceId", new { sourceId }, transaction);
         conn.Execute("DELETE FROM HarmonyPatches WHERE SourceId = @sourceId", new { sourceId }, transaction);
         conn.Execute("DELETE FROM Calls WHERE CallerMethodId IN (SELECT Id FROM Methods WHERE SourceId = @sourceId) OR CalleeMethodId IN (SELECT Id FROM Methods WHERE SourceId = @sourceId)", new { sourceId }, transaction);
         conn.Execute("DELETE FROM Inheritance WHERE ParentTypeId IN (SELECT Id FROM Types WHERE SourceId = @sourceId) OR ChildTypeId IN (SELECT Id FROM Types WHERE SourceId = @sourceId)", new { sourceId }, transaction);

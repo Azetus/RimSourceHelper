@@ -177,6 +177,15 @@ export interface FieldAccessEntry {
   Source: string;
 }
 
+// --- xml patches ---
+export interface XmlPatchResult {
+    TargetXPaths: string | null;
+    OperationClasses: string | null;
+    RawXml: string;
+    SourceFile: string | null;
+    Source: string;
+}
+
 // --- sources ---
 export interface SourceResult {
   Name: string;

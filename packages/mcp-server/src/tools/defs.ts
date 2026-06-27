@@ -1,7 +1,7 @@
 import type { Config } from "../config.js";
-import type { DefSummary, DefDetails, DefTypeCount } from "../types.js";
+import type { DefSummary, DefDetails, DefTypeCount, XmlPatchResult } from "../types.js";
 import { withDatabase } from "../utils/database.js";
-import { formatDefList, formatDefDetails, formatDefTypes } from "../utils/formatter.js";
+import { formatDefList, formatDefDetails, formatDefTypes, formatXmlPatchList, formatXmlPatchDetail } from "../utils/formatter.js";
 
 // search_defs: 按名称搜索 Def，返回摘要列表
 export async function searchDefs(args: Record<string, unknown>, config: Config) {
@@ -83,4 +83,52 @@ export async function findDefReferences(args: Record<string, unknown>, config: C
   });
 
   return { content: [{ type: "text" as const, text: formatDefList(refs, `## Defs referencing "${defName}" (${refs.length})`) }] };
+}
+
+// list_xml_patches: 分页列出 Mod 的 XML Patches
+export async function listXmlPatches(args: Record<string, unknown>, config: Config) {
+  const source = args.source as string;
+  const offset = (args.offset as number) ?? 0;
+  const limit = (args.limit as number) ?? 50;
+
+  return withDatabase(config.databasePath, (db) => {
+    const sourceRow = db.prepare("SELECT Id, Name FROM Sources WHERE Name = ?").get(source) as { Id: number; Name: string } | undefined;
+    if (!sourceRow) return { content: [{ type: "text" as const, text: `Source not found: ${source}` }], isError: true };
+
+    const patches = db.prepare(
+      `SELECT p.TargetXPaths, p.OperationClasses, p.SourceFile, s.Name as Source
+       FROM XmlPatches p JOIN Sources s ON p.SourceId = s.Id
+       WHERE p.SourceId = ? LIMIT ? OFFSET ?`
+    ).all(sourceRow.Id, limit, offset) as unknown as XmlPatchResult[];
+
+    const total = (db.prepare("SELECT COUNT(*) FROM XmlPatches WHERE SourceId = ?").get(sourceRow.Id) as { "COUNT(*)": number })["COUNT(*)"];
+
+    return { content: [{ type: "text" as const, text: formatXmlPatchList(patches, source, offset, limit, total) }] };
+  });
+}
+
+// find_xml_patches: 按 defName 搜索 XML Patches
+export async function findXmlPatches(args: Record<string, unknown>, config: Config) {
+  const defName = args.def_name as string;
+  const source = args.source as string | undefined;
+  const includeRaw = (args.include_raw as boolean) ?? false;
+  const limit = (args.limit as number) ?? 50;
+
+  return withDatabase(config.databasePath, (db) => {
+    if (!source) {
+      const patches = db.prepare(
+        `SELECT p.*, s.Name as Source FROM XmlPatches p JOIN Sources s ON p.SourceId = s.Id
+         WHERE p.TargetXPaths LIKE ? ORDER BY s.Name LIMIT ?`
+      ).all(`%defName="${defName}"%`, limit) as unknown as XmlPatchResult[];
+
+      return { content: [{ type: "text" as const, text: formatXmlPatchDetail(patches, defName, `## XML Patches referencing ${defName} (${patches.length})`, includeRaw) }] };
+    }
+
+    const patches = db.prepare(
+      `SELECT p.*, s.Name as Source FROM XmlPatches p JOIN Sources s ON p.SourceId = s.Id
+       WHERE p.TargetXPaths LIKE ? AND s.Name = ? ORDER BY s.Name LIMIT ?`
+    ).all(`%defName="${defName}"%`, source, limit) as unknown as XmlPatchResult[];
+
+    return { content: [{ type: "text" as const, text: formatXmlPatchDetail(patches, defName, `## XML Patches referencing ${defName} in ${source} (${patches.length})`, includeRaw) }] };
+  });
 }

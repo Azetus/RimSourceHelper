@@ -2,7 +2,7 @@ import type {
   TargetSearchResult, TypeInfoResult, MethodInfoResult, MethodReference,
   TypeMembersResult, MemberMethod, MemberField, MemberProperty,
   CallTreeNode, DefSummary, DefDetails, DefTypeCount,
-  HarmonyPatchResult, FieldAccessEntry, SourceResult
+  HarmonyPatchResult, FieldAccessEntry, XmlPatchResult, SourceResult
 } from "../types.js";
 
 // --- find_target ---
@@ -268,6 +268,57 @@ export function formatPatchList(patches: HarmonyPatchResult[], title: string): s
     const target = p.TargetMethod ? `${p.TargetType}.${p.TargetMethod}${params}` : p.TargetType;
     const prio = p.Priority ? ` [${p.Priority}]` : "";
     lines.push(`- **${p.PatchType}** on \`${target}\` by \`${p.PatchClass}.${p.PatchMethod}\`${prio} — ${p.Source}`);
+  }
+  return lines.join("\n");
+}
+
+// --- xml patches ---
+function compressOps(opClasses: string): string {
+  const ops = opClasses.split("\n").map(o => o.replace("PatchOperation", ""));
+  const result: string[] = [];
+  let i = 0;
+  while (i < ops.length) {
+    const current = ops[i];
+    let count = 1;
+    while (i + count < ops.length && ops[i + count] === current) count++;
+    result.push(count > 1 ? `${current} × ${count}` : current);
+    i += count;
+  }
+  return result.join(" → ");
+}
+
+function findMatchingXPath(targetXPaths: string | null, defName: string): string {
+  if (!targetXPaths) return "N/A";
+  const lines = targetXPaths.split("\n").map(s => s.trim());
+  const match = lines.find(l => l.includes(`defName="${defName}"`) || l.includes(`defName='${defName}'`));
+  return match ?? lines[0];
+}
+
+export function formatXmlPatchList(patches: XmlPatchResult[], source: string, offset: number, limit: number, total: number): string {
+  if (patches.length === 0) return `## XML Patches from ${source}\nNone.`;
+  const page = Math.floor(offset / limit) + 1;
+  const lines: string[] = [`## XML Patches from ${source} (page ${page}, total ${total})`];
+  for (const p of patches) {
+    const ops = p.OperationClasses ? compressOps(p.OperationClasses) : "Unknown";
+    const targets = (p.TargetXPaths ?? "").split("\n").map(s => s.trim()).filter(s => s).slice(0, 3).join(", ");
+    const more = (p.TargetXPaths?.split("\n").filter(s => s.trim()).length ?? 0) > 3 ? ", ..." : "";
+    const file = p.SourceFile ? ` — ${p.SourceFile}` : "";
+    lines.push(`- **${ops}** → ${targets ? `\`${targets}\`` : "N/A"}${more}${file}`);
+  }
+  return lines.join("\n");
+}
+
+export function formatXmlPatchDetail(patches: XmlPatchResult[], defName: string, title: string, includeRaw: boolean): string {
+  if (patches.length === 0) return `${title}\nNone.`;
+  const lines: string[] = [title];
+  for (const p of patches) {
+    const ops = p.OperationClasses ? compressOps(p.OperationClasses) : "Unknown";
+    const target = findMatchingXPath(p.TargetXPaths, defName);
+    const file = p.SourceFile ? ` — ${p.SourceFile}` : "";
+    lines.push(`- **${ops}** → \`${target}\` — ${p.Source}${file}`);
+    if (includeRaw) {
+      lines.push(`  \`\`\`xml\n  ${p.RawXml}\n  \`\`\``);
+    }
   }
   return lines.join("\n");
 }
