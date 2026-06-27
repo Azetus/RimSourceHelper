@@ -18,7 +18,7 @@ export const toolDefinitions: Tool[] = [
       properties: {
         query: { type: "string", description: "Search keyword" },
         kind: { type: "string", enum: ["type", "method", "field", "property"], description: "Filter by kind" },
-        source: { type: "string", description: "Filter by source name" },
+        source: { type: "string", description: "Filter by source name (e.g. 'RimWorld Core', 'Anomaly', or Mod's full name)" },
         limit: { type: "number", description: "Max results per kind (default: 20)" },
         offset: { type: "number", description: "Starting position (default: 0)" }
       },
@@ -80,7 +80,7 @@ export const toolDefinitions: Tool[] = [
   },
   {
     name: "get_call_tree",
-    description: "Recursively expand call chain with cycle detection.",
+    description: "Recursively expand call chain with cycle detection. Supports methods only (not fields/properties).",
     inputSchema: {
       type: "object",
       properties: {
@@ -100,7 +100,7 @@ export const toolDefinitions: Tool[] = [
       type: "object",
       properties: {
         query: { type: "string", description: "Search keyword (can be empty to list all)" },
-        def_type: { type: "string", description: "Filter by DefType (e.g. ThingDef)" },
+        def_type: { type: "string", description: "Filter by DefType (e.g. ThingDef). Use empty query to browse all of a type." },
         limit: { type: "number", description: "Max results (default: 100)" },
         offset: { type: "number", description: "Starting position (default: 0)" }
       },
@@ -144,7 +144,7 @@ export const toolDefinitions: Tool[] = [
   // --- Harmony ---
   {
     name: "find_harmony_patches",
-    description: "Find Harmony patches targeting a specific type or method. Shows parameter types for overload disambiguation.",
+    description: "Find Harmony patches targeting a specific type or method. Shows parameter types for overload disambiguation. At least one of target_type or target_method is required.",
     inputSchema: {
       type: "object",
       properties: {
@@ -179,14 +179,14 @@ export const toolDefinitions: Tool[] = [
     }
   },
 
-  // --- 数据库管理 ---
+  // --- xml patch ---
   {
     name: "list_xml_patches",
     description: "List XML Patches from a specific mod with pagination.",
     inputSchema: {
       type: "object",
       properties: {
-        source: { type: "string", description: "Mod name" },
+        source: { type: "string", description: "Mod name (as shown in About.xml, e.g. 'RimWorld Core' or Mod's full name)" },
         offset: { type: "number", description: "Starting position (default: 0)" },
         limit: { type: "number", description: "Max results per page (default: 50)" }
       },
@@ -200,7 +200,7 @@ export const toolDefinitions: Tool[] = [
       type: "object",
       properties: {
         def_name: { type: "string", description: "DefName to search in XPath" },
-        source: { type: "string", description: "Filter by source name" },
+        source: { type: "string", description: "Filter by source name (e.g. 'RimWorld Core' or Mod's full name)" },
         include_raw: { type: "boolean", description: "Return full RawXml (default: false)" },
         limit: { type: "number", description: "Max results (default: 50)" }
       },
@@ -211,7 +211,7 @@ export const toolDefinitions: Tool[] = [
   // --- 数据库管理 ---
   {
     name: "build_database",
-    description: "Build/rebuild the knowledge database from RimWorld game files. Paths are read from server config.",
+    description: "Build/rebuild from game files. WARNING: clears ALL existing data including previously added mods.",
     inputSchema: {
       type: "object",
       properties: {}
@@ -219,7 +219,7 @@ export const toolDefinitions: Tool[] = [
   },
   {
     name: "add_mod",
-    description: "Add a mod's code, Defs, and Harmony patches to the knowledge database. Idempotent.",
+    description: "Add a mod's code, Defs, and Harmony patches to the knowledge database. Idempotent (replaces existing data for the same mod).",
     inputSchema: {
       type: "object",
       properties: {
@@ -230,7 +230,7 @@ export const toolDefinitions: Tool[] = [
   },
   {
     name: "remove_mod",
-    description: "Remove a mod's data from the knowledge database. Idempotent.",
+    description: "Remove a mod's data from the knowledge database. Idempotent (no-op if already removed).",
     inputSchema: {
       type: "object",
       properties: {
