@@ -1,6 +1,6 @@
 # mcp-server
 
-RimWorld knowledge base MCP server. Provides 17 tools for AI coding assistants to query types, methods, call graphs, Defs, Harmony patches, and decompiled source code.
+RimWorld knowledge base MCP server. Provides 19 tools for AI coding assistants to query types, methods, call graphs, Defs, Harmony patches, XML patches, and decompiled source code.
 
 ## Integration
 
@@ -21,14 +21,24 @@ Add to your `opencode.json`:
 
 ### `find_target`
 
-Fuzzy search types, methods, fields, or properties. Supports kind filter and relevance ranking.
+Search types, methods, fields, or properties by name. Supports kind filter and relevance ranking.
 
 ```
-find_target(query: "isFighter", kind: "field", limit: 5)
+find_target(query: "isFighter", kind: "field", limit: 3)
 ```
 ```
 ## Fields (1)
 - `Verse.PawnKindDef.isFighter` : System.Boolean — RimWorld Core
+```
+
+```
+find_target(query: "Pawn", kind: "type", limit: 3)
+```
+```
+## Types (3)
+- `Verse.Pawn` — RimWorld Core
+- `RimWorld.PawnActivityWorker` — RimWorld Core
+- `RimWorld.PawnAddictionHediffsGenerator` — RimWorld Core
 ```
 
 ---
@@ -66,18 +76,16 @@ get_target_info(target: "Verse.Verb.TryStartCastOn")
 
 ## Callers (14)
 - `System.Boolean Verse.Pawn.TryStartAttack(Verse.LocalTargetInfo)` — RimWorld Core
-- `System.Boolean RimWorld.Pawn_MeleeVerbs.TryMeleeAttack(Verse.Thing,Verse.Verb,System.Boolean)` — RimWorld Core
-- `System.Void RimWorld.Building_TurretGun.BeginBurst()` — RimWorld Core
+- `System.Boolean RimWorld.Pawn_MeleeVerbs.TryMeleeAttack(...)` — RimWorld Core
 - ...
 
 ## Callees (14)
 - `System.Void Verse.Verb.WarmupComplete()` — RimWorld Core
 - `System.Boolean Verse.Verb.CanHitTarget(Verse.LocalTargetInfo)` — RimWorld Core
-- `System.Boolean Verse.Verb.TryFindShootLineFromTo(Verse.IntVec3,Verse.LocalTargetInfo,ref Verse.ShootLine,System.Boolean)` — RimWorld Core
 - ...
 
 ## Harmony Patches (1)
-- **Prefix** (Verse.LocalTargetInfo,Verse.LocalTargetInfo,System.Boolean,System.Boolean,System.Boolean,System.Boolean) `VFM_VanillaFireModes.Patches.Patch_TryStartCastOn.Prefix` — Vanilla Fire Modes
+- **Prefix** (Verse.LocalTargetInfo,Verse.LocalTargetInfo,...) `VFM_VanillaFireModes.Patches.Patch_TryStartCastOn.Prefix` — Vanilla Fire Modes
 ```
 
 ---
@@ -97,10 +105,8 @@ list_type_members(type_name: "Verse.Verb", kind: "methods")
 - `TryStartCastOn` public → System.Boolean
 - `TryStartCastOn` public virtual → System.Boolean
 - `WarmupComplete` public virtual → System.Void
-- `TryCastNextBurstShot` protected → System.Void
 - `TryCastShot` protected virtual abstract → System.Boolean
 - `CanHitTarget` public virtual → System.Boolean
-- `TryFindShootLineFromTo` public → System.Boolean
 - ...
 ```
 
@@ -111,7 +117,7 @@ list_type_members(type_name: "Verse.Verb", kind: "methods")
 Find callers of a method, field, or property. Auto-detects target type.
 
 ```
-get_callers(method: "Verse.Verb.WarmupComplete", limit: 5)
+get_callers(method: "Verse.Verb.WarmupComplete", limit: 3)
 ```
 ```
 ## Callers of Verse.Verb.WarmupComplete (3)
@@ -120,15 +126,17 @@ get_callers(method: "Verse.Verb.WarmupComplete", limit: 5)
 - `System.Void Verse.Verb_LaunchProjectile.WarmupComplete()` — RimWorld Core
 ```
 
-Also supports fields and properties:
+Field reference tracking:
 ```
 get_callers(method: "Verse.PawnKindDef.isFighter", limit: 5)
 ```
 ```
 ## References to Verse.PawnKindDef.isFighter (field) (5)
-- `RimWorld.MechClusterGenerator.MechKindSuitableForCluster` → `Verse.PawnKindDef.isFighter` [read] : System.Boolean — RimWorld Core
-- `RimWorld.PawnGroupMakerUtility.PawnGenOptionValid` → `Verse.PawnKindDef.isFighter` [read] : System.Boolean — RimWorld Core
-- ...
+- `RimWorld.MechClusterGenerator.MechKindSuitableForCluster` → `Verse.PawnKindDef.isFighter` [read]
+- `RimWorld.PawnGroupMakerUtility.PawnGenOptionValid` → `Verse.PawnKindDef.isFighter` [read]
+- `RimWorld.PawnGroupKindWorker_Normal.MinPointsToGenerateAnything` → `Verse.PawnKindDef.isFighter` [read]
+- `RimWorld.ComplexThreatWorker_SleepingMechanoids.MechKindSuitableForComplex` → `Verse.PawnKindDef.isFighter` [read]
+- `Verse.PawnKindDef..ctor` → `Verse.PawnKindDef.isFighter` [write]
 ```
 
 ---
@@ -136,16 +144,6 @@ get_callers(method: "Verse.PawnKindDef.isFighter", limit: 5)
 ### `get_callees`
 
 Direct callees of a method. Set `include_field_access=true` to also see field/property accesses.
-
-```
-get_callees(method: "Verse.Pawn.Kill", limit: 5)
-```
-```
-## Callees of Verse.Pawn.Kill (5)
-- `System.Boolean MechanitorUtility.IsMechanitor(Verse.Pawn)` — RimWorld Core
-- `System.Void RimWorld.BillUtility.Notify_ColonistUnavailable(Verse.Pawn)` — RimWorld Core
-- ...
-```
 
 ```
 get_callees(method: "Verse.Verb.WarmupComplete", include_field_access: true)
@@ -164,7 +162,7 @@ get_callees(method: "Verse.Verb.WarmupComplete", include_field_access: true)
 
 ### `get_call_tree`
 
-Recursive call tree with cycle detection.
+Recursive call tree with cycle detection. Supports methods only.
 
 ```
 get_call_tree(method: "Verse.Pawn.Kill", direction: "callees", max_depth: 2)
@@ -177,14 +175,10 @@ Verse.Pawn.Kill
 ├── Verse.Pawn.DoKillSideEffects
 │   ├── Verse.BattleLogEntry_StateTransition..ctor
 │   ├── RimWorld.HistoryEventsManager.RecordEvent
-│   ├── RimWorld.RecordsUtility.Notify_PawnKilled
 │   └── RimWorld.TaleUtility.Notify_PawnDied
 ├── Verse.Pawn.PreDeathPawnModifications
-│   ├── RimWorld.BillStack.Clear
-│   ├── RimWorld.Pawn_ApparelTracker.Notify_PawnKilled
 │   └── RimWorld.Pawn_RelationsTracker.Notify_PawnKilled
 ├── Verse.Pawn.MakeCorpse
-│   └── Verse.Pawn.MakeCorpse
 ├── Verse.Pawn_HealthTracker.SetDead
 │   └── Verse.Log.Error
 └── ... (55 more)
@@ -194,18 +188,14 @@ Verse.Pawn.Kill
 
 ### `search_defs`
 
-Search Defs by name.
+Search Defs by name, or browse all Defs of a type with empty query.
 
 ```
-search_defs(query: "MeleeWeapon", limit: 5)
+search_defs(query: "MeleeWeapon_Knife", limit: 3)
 ```
 ```
-## Defs matching "MeleeWeapon" (5)
-- **MeleeWeapon_AverageArmorPenetration** (StatDef) "melee armor penetration" — RimWorld Core
-- **MeleeWeapon_AverageDPS** (StatDef) "melee damage per second" — RimWorld Core
-- **MeleeWeapon_CooldownMultiplier** (StatDef) "melee cooldown" — RimWorld Core
-- **MeleeWeapon_DamageMultiplier** (StatDef) "melee damage multiplier" — RimWorld Core
-- **BaseMeleeWeapon** (ThingDef) — RimWorld Core
+## Defs matching "MeleeWeapon_Knife" (1)
+- **MeleeWeapon_Knife** (ThingDef) "knife" — RimWorld Core
 ```
 
 ---
@@ -231,12 +221,7 @@ get_def_details(def_name: "MeleeWeapon_Knife")
   <defName>MeleeWeapon_Knife</defName>
   <label>knife</label>
   <tools>
-    <li>
-      <label>blade</label>
-      <capacities><li>Cut</li></capacities>
-      <power>12</power>
-      <cooldownTime>1.5</cooldownTime>
-    </li>
+    <li><label>blade</label><capacities><li>Cut</li></capacities>...</li>
     ...
   </tools>
 </ThingDef>
@@ -253,12 +238,10 @@ All Def types with counts.
 list_def_types()
 ```
 ```
-## Def Types (252)
-- ThingDef: 2055
-- SoundDef: 1233
-- ThoughtDef: 934
-- BackstoryDef: 845
-- HediffDef: 346
+## Def Types (266)
+- ThingDef: 6992
+- RecipeDef: 1770
+- SoundDef: 1256
 - ...
 ```
 
@@ -284,25 +267,25 @@ find_def_references(def_name: "ComponentIndustrial", limit: 5)
 
 ### `find_harmony_patches`
 
-Find Harmony patches on a target type or method. Includes parameter types for overload disambiguation.
+Find Harmony patches on a target type or method. Shows parameter types for overload disambiguation.
 
 ```
-find_harmony_patches(target_type: "Verse.Verb")
+find_harmony_patches(target_type: "Verse.VerbProperties", target_method: "AdjustedArmorPenetration")
 ```
 ```
-## Harmony Patches on Verse.Verb (2)
-- **Prefix** on `Verse.Verb.TryStartCastOn(Verse.LocalTargetInfo,Verse.LocalTargetInfo,System.Boolean,System.Boolean,System.Boolean,System.Boolean)` by `VFM_VanillaFireModes.Patches.Patch_TryStartCastOn.Prefix` — Vanilla Fire Modes
-- **Prefix** on `Verse.Verb.WarmupComplete` by `VFM_VanillaFireModes.Patches.Patch_BurstShotCount.LockCount` — Vanilla Fire Modes
+## Harmony Patches on Verse.VerbProperties.AdjustedArmorPenetration (2)
+- **Postfix** on `Verse.VerbProperties.AdjustedArmorPenetration(Verse.Tool,Verse.Pawn,Verse.Thing,Verse.HediffComp_VerbGiver)` by `VMM_VanillaMeleeModes.Patches.Patch_ArmorPenetration.Patch_ArmorPenetration_1` — Vanilla Melee Modes
+- **Postfix** on `Verse.VerbProperties.AdjustedArmorPenetration(Verse.Tool,Verse.Pawn,Verse.ThingDef,Verse.ThingDef,Verse.HediffComp_VerbGiver)` by `VMM_VanillaMeleeModes.Patches.Patch_ArmorPenetration.Patch_ArmorPenetration_2` — Vanilla Melee Modes
 ```
 
 ---
 
 ### `list_harmony_patches`
 
-List all patches from a specific mod. Parameter types shown when targeting overloaded methods.
+List all patches from a specific mod.
 
 ```
-list_harmony_patches(source: "Vanilla Melee Modes")
+list_harmony_patches(source: "Vanilla Melee Modes", limit: 5)
 ```
 ```
 ## Harmony Patches from Vanilla Melee Modes (4)
@@ -316,7 +299,7 @@ list_harmony_patches(source: "Vanilla Melee Modes")
 
 ### `decompile_target`
 
-On-demand decompilation. Returns only source code.
+On-demand decompilation. Returns only source code. Use this to see field default values.
 
 ```
 decompile_target(target: "Verse.Pawn.Kill")
@@ -346,35 +329,63 @@ public override void Kill(DamageInfo? dinfo, Hediff exactCulprit = null)
 
 ---
 
+### `list_xml_patches`
+
+List XML Patches from a specific mod with pagination.
+
+```
+list_xml_patches(source: "RimWorld Core", limit: 3)
+```
+```
+## XML Patches from RimWorld Core (page 1, total 0)
+None.
+```
+
+---
+
+### `find_xml_patches`
+
+Find XML Patches by def_name. Set `include_raw=true` for full XML.
+
+```
+find_xml_patches(def_name: "MeleeWeapon_Mace", limit: 3)
+```
+```
+## XML Patches referencing MeleeWeapon_Mace (0)
+None.
+```
+
+---
+
 ### `build_database`
 
-Build/rebuild knowledge database from game files. Paths from config.
+Build/rebuild knowledge database from game files. WARNING: clears ALL existing data.
 
 ```
 build_database()
 ```
 ```json
-{"status":"success","types":16157,"methods":79712,"calls":153596,"defs":13809}
+{"status":"success","types":16157,"methods":90777,"calls":228834,"defs":13809}
 ```
 
 ---
 
 ### `add_mod`
 
-Add a mod to the knowledge base. Idempotent.
+Add a mod to the knowledge base. Idempotent (replaces existing data for the same mod).
 
 ```
-add_mod(mod_path: "D:\\Steam\\steamapps\\common\\RimWorld\\Mods\\VanillaMeleeModes")
+add_mod(mod_path: "E:\\Code\\mod\\Rimworld\\Vanilla-Melee-Modes")
 ```
 ```json
-{"status":"success","types":51,"methods":152,"calls":108,"defs":7}
+{"status":"success","types":51,"methods":157,"calls":141,"defs":7}
 ```
 
 ---
 
 ### `remove_mod`
 
-Remove a mod from the knowledge base. Idempotent.
+Remove a mod from the knowledge base. Idempotent (no-op if already removed).
 
 ```
 remove_mod(mod_name: "Vanilla Melee Modes")

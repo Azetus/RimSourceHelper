@@ -65,10 +65,10 @@ rim-analyzer add-mod --mod-path <path> --db <path> --game-path <path> [--verbose
 | `--verbose` | | Verbose stderr logging |
 
 ```bash
-$ rim-analyzer add-mod --mod-path "D:\Steam\steamapps\common\RimWorld\Mods\VanillaFireModes" --db "./rimworld.db" --game-path "D:\Steam\steamapps\common\RimWorld"
+$ rim-analyzer add-mod --mod-path "E:\Code\mod\Rimworld\Vanilla-Melee-Modes" --db "./rimworld.db" --game-path "D:\Steam\steamapps\common\RimWorld"
 ```
 ```json
-{"status":"success","types":39,"methods":155,"calls":159,"defs":0}
+{"status":"success","types":51,"methods":157,"calls":141,"defs":7}
 ```
 
 ---
@@ -141,10 +141,10 @@ rim-analyzer harmony --mod-path <path> [--game-path <path>]
 | `--game-path` | | RimWorld game root (for DLL reference resolution) |
 
 ```bash
-$ rim-analyzer harmony --mod-path "D:\Steam\steamapps\common\RimWorld\Mods\VanillaFireModes" --game-path "D:\Steam\steamapps\common\RimWorld"
+$ rim-analyzer harmony --mod-path "E:\Code\mod\Rimworld\Vanilla-Melee-Modes" --game-path "D:\Steam\steamapps\common\RimWorld"
 ```
 ```json
-{"status":"success","modName":"Vanilla Fire Modes","patchCount":2,"patches":[{"targetType":"Verse.Verb","targetMethod":"WarmupComplete","patchType":"Prefix","patchClass":"VFM_VanillaFireModes.Patches.Patch_BurstShotCount","patchMethod":"LockCount","priority":null},{"targetType":"Verse.Verb","targetMethod":"TryStartCastOn","patchType":"Prefix","patchClass":"VFM_VanillaFireModes.Patches.Patch_TryStartCastOn","patchMethod":"Prefix","priority":null}]}
+{"status":"success","modName":"Vanilla Melee Modes","patchCount":4,"patches":[{"targetType":"Verse.AI.Pawn_JobTracker","targetMethod":"StartJob","patchType":"Postfix",...},{"targetType":"Verse.Pawn","targetMethod":"PreApplyDamage","patchType":"Prefix",...},{"targetType":"Verse.VerbProperties","targetMethod":"AdjustedArmorPenetration","patchType":"Postfix",...},{"targetType":"Verse.VerbProperties","targetMethod":"AdjustedArmorPenetration","patchType":"Postfix",...}]}
 ```
 
 > Harmony patches are also stored in DB during `add-mod` for cross-mod query support.
