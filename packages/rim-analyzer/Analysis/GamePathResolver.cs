@@ -1,3 +1,5 @@
+using Mono.Cecil;
+
 namespace RimAnalyzer.Analysis;
 
 // 从游戏根目录推导各子路径（Windows 平台硬编码）
@@ -63,5 +65,22 @@ public class GamePathResolver
         }
 
         return result;
+    }
+
+    // 从 Assembly-CSharp.dll 读取游戏版本号（如 "1.6"）
+    public string DetectGameVersion()
+    {
+        try
+        {
+            using var asm = AssemblyDefinition.ReadAssembly(
+                MainAssemblyPath,
+                new ReaderParameters { ReadSymbols = false }
+            );
+            return asm.Name.Version.ToString();
+        }
+        catch
+        {
+            return "unknown";
+        }
     }
 }

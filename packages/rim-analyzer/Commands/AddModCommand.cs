@@ -79,12 +79,13 @@ public static class AddModCommand
     {
         // 解析 Mod 目录
         var mod = new ModResolver(options.ModPath);
-        mod.Resolve();
-        Log($"[INFO] Mod: {mod.Name} (packageId={mod.PackageId})");
-        Log($"[INFO] Found {mod.AssemblyPaths.Count} DLLs, {mod.DefFiles.Count} XML files.");
 
         // 打开已有数据库
         var gameResolver = new GamePathResolver(options.GamePath);
+        var gameVersion = gameResolver.DetectGameVersion();
+        mod.Resolve(gameVersion);
+        Log($"[INFO] Mod: {mod.Name} (packageId={mod.PackageId}, version={gameVersion})");
+        Log($"[INFO] Found {mod.AssemblyPaths.Count} DLLs, {mod.DefFiles.Count} XML files.");
         if (mod.AssemblyPaths.Count > 0)
             gameResolver.Validate();
 

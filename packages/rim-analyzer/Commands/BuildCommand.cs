@@ -102,8 +102,10 @@ public static class BuildCommand
             var sourceId = db.Sources.Insert(coreSource);
             Log($"[INFO] Created source: {coreSource.Name} (id={sourceId})");
 
-            // 存储 game-path 供 decompile 命令使用
+            // 存储 game-path 和 game-version 供 decompile 等命令使用
             db.Metadata.Set("game_path", resolver.GameRoot);
+            db.Metadata.Set("game_version", resolver.DetectGameVersion());
+            Log($"[INFO] Game version: {resolver.DetectGameVersion()}");
 
             // 写入元数据
             var writeResult = MetadataWriter.Write(db, collection.Types, sourceId, Log);
