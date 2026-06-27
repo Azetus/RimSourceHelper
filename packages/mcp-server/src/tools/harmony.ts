@@ -38,17 +38,18 @@ export async function findHarmonyPatches(args: Record<string, unknown>, config: 
 export async function listHarmonyPatches(args: Record<string, unknown>, config: Config) {
   const source = args.source as string | undefined;
   const limit = (args.limit as number) ?? 100;
+  const offset = (args.offset as number) ?? 0;
 
   const patches = withDatabase(config.databasePath, (db) => {
     const sql = source
       ? `SELECT h.TargetType, h.TargetMethod, h.TargetParams, h.PatchType, h.PatchClass, h.PatchMethod, h.Priority, s.Name as Source
          FROM HarmonyPatches h JOIN Sources s ON h.SourceId = s.Id
          WHERE s.Name = ?
-         ORDER BY h.TargetType, h.TargetMethod LIMIT ?`
+         ORDER BY h.TargetType, h.TargetMethod LIMIT ? OFFSET ?`
       : `SELECT h.TargetType, h.TargetMethod, h.TargetParams, h.PatchType, h.PatchClass, h.PatchMethod, h.Priority, s.Name as Source
          FROM HarmonyPatches h JOIN Sources s ON h.SourceId = s.Id
-         ORDER BY s.Name, h.TargetType, h.TargetMethod LIMIT ?`;
-    const params: (string | number)[] = source ? [source, limit] : [limit];
+         ORDER BY s.Name, h.TargetType, h.TargetMethod LIMIT ? OFFSET ?`;
+    const params: (string | number)[] = source ? [source, limit, offset] : [limit, offset];
     return db.prepare(sql).all(...params) as unknown as HarmonyPatchResult[];
   });
 

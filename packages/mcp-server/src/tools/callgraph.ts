@@ -10,6 +10,7 @@ const MAX_CHILDREN_PER_NODE = 20;
 export async function getCallers(args: Record<string, unknown>, config: Config) {
   const method = args.method as string;
   const limit = (args.limit as number) ?? 50;
+  const offset = (args.offset as number) ?? 0;
 
   const result = withDatabase(config.databasePath, (db): MethodReference[] | FieldAccessEntry[] | string => {
     // 尝试作为方法/属性查找
@@ -19,8 +20,8 @@ export async function getCallers(args: Record<string, unknown>, config: Config) 
       return db.prepare(
         `SELECT DISTINCT m.FullName, m.Signature, m.ReturnType, s.Name as Source
          FROM Methods m JOIN Calls c ON m.Id = c.CallerMethodId JOIN Sources s ON m.SourceId = s.Id
-         WHERE c.CalleeMethodId IN (${placeholders}) ORDER BY m.FullName LIMIT ?`
-      ).all(...ids, limit) as unknown as MethodReference[];
+         WHERE c.CalleeMethodId IN (${placeholders}) ORDER BY m.FullName LIMIT ? OFFSET ?`
+      ).all(...ids, limit, offset) as unknown as MethodReference[];
     }
 
     // 尝试作为字段查找
@@ -33,8 +34,8 @@ export async function getCallers(args: Record<string, unknown>, config: Config) 
          JOIN Fields f ON fa.FieldId = f.Id
          JOIN Types t ON f.TypeId = t.Id
          JOIN Sources s ON m.SourceId = s.Id
-         WHERE fa.FieldId = ? ORDER BY m.FullName LIMIT ?`
-      ).all(fieldId, limit) as unknown as FieldAccessEntry[];
+         WHERE fa.FieldId = ? ORDER BY m.FullName LIMIT ? OFFSET ?`
+      ).all(fieldId, limit, offset) as unknown as FieldAccessEntry[];
     }
 
     return `Method or field not found: ${method}`;
@@ -56,6 +57,7 @@ export async function getCallers(args: Record<string, unknown>, config: Config) 
 export async function getCallees(args: Record<string, unknown>, config: Config) {
   const method = args.method as string;
   const limit = (args.limit as number) ?? 50;
+  const offset = (args.offset as number) ?? 0;
   const includeFieldAccess = (args.include_field_access as boolean) ?? false;
 
   const result = withDatabase(config.databasePath, (db): { callees: MethodReference[]; fieldAccesses: FieldAccessEntry[] } | string => {
@@ -66,8 +68,8 @@ export async function getCallees(args: Record<string, unknown>, config: Config) 
     const callees = db.prepare(
       `SELECT DISTINCT m.FullName, m.Signature, m.ReturnType, s.Name as Source
        FROM Methods m JOIN Calls c ON m.Id = c.CalleeMethodId JOIN Sources s ON m.SourceId = s.Id
-       WHERE c.CallerMethodId IN (${placeholders}) ORDER BY m.FullName LIMIT ?`
-    ).all(...ids, limit) as unknown as MethodReference[];
+       WHERE c.CallerMethodId IN (${placeholders}) ORDER BY m.FullName LIMIT ? OFFSET ?`
+    ).all(...ids, limit, offset) as unknown as MethodReference[];
 
     const fieldAccesses: FieldAccessEntry[] = [];
     if (includeFieldAccess) {

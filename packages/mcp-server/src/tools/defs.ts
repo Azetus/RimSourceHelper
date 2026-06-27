@@ -8,6 +8,7 @@ export async function searchDefs(args: Record<string, unknown>, config: Config) 
   const query = args.query as string;
   const defType = args.def_type as string | undefined;
   const limit = (args.limit as number) ?? 100;
+  const offset = (args.offset as number) ?? 0;
 
   const defs = withDatabase(config.databasePath, (db) => {
     let sql = `SELECT d.DefName, d.DefType, d.Label, d.IsAbstract, d.ParentDef, s.Name as Source
@@ -23,8 +24,8 @@ export async function searchDefs(args: Record<string, unknown>, config: Config) 
       params.push(defType);
     }
 
-    sql += " ORDER BY d.DefType, d.DefName LIMIT ?";
-    params.push(limit);
+    sql += " ORDER BY d.DefType, d.DefName LIMIT ? OFFSET ?";
+    params.push(limit, offset);
 
     return db.prepare(sql).all(...params) as unknown as DefSummary[];
   });
@@ -70,6 +71,7 @@ export async function listDefTypes(args: Record<string, unknown>, config: Config
 export async function findDefReferences(args: Record<string, unknown>, config: Config) {
   const defName = args.def_name as string;
   const limit = (args.limit as number) ?? 50;
+  const offset = (args.offset as number) ?? 0;
 
   const refs = withDatabase(config.databasePath, (db) => {
     return db.prepare(
@@ -78,8 +80,8 @@ export async function findDefReferences(args: Record<string, unknown>, config: C
        JOIN DefReferences r ON d.Id = r.SourceDefId
        JOIN Sources s ON d.SourceId = s.Id
        WHERE r.TargetDefName = ?
-       ORDER BY d.DefType, d.DefName LIMIT ?`
-    ).all(defName, limit) as unknown as DefSummary[];
+       ORDER BY d.DefType, d.DefName LIMIT ? OFFSET ?`
+    ).all(defName, limit, offset) as unknown as DefSummary[];
   });
 
   return { content: [{ type: "text" as const, text: formatDefList(refs, `## Defs referencing "${defName}" (${refs.length})`) }] };

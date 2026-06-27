@@ -11,8 +11,9 @@ export async function findTarget(args: Record<string, unknown>, config: Config) 
   const kind = args.kind as string | undefined;
   const source = args.source as string | undefined;
   const limit = (args.limit as number) ?? 20;
+  const offset = (args.offset as number) ?? 0;
 
-  const results = withDatabase(config.databasePath, (db) => {
+  const result = withDatabase(config.databasePath, (db) => {
     const items: TargetSearchResult[] = [];
 
     if (kind !== "method" && kind !== "field" && kind !== "property") {
@@ -21,15 +22,15 @@ export async function findTarget(args: Record<string, unknown>, config: Config) 
            FROM Types t JOIN Sources s ON t.SourceId = s.Id
            WHERE (t.Name LIKE ? OR t.FullName = ?) AND s.Name = ?
            ORDER BY CASE WHEN t.Name = ? OR t.FullName = ? THEN 0 WHEN t.Name LIKE ? THEN 1 ELSE 2 END, t.Name
-           LIMIT ?`
+           LIMIT ? OFFSET ?`
         : `SELECT 'type' as Kind, t.FullName, t.Name, t.Namespace, t.IsAbstract, t.IsInterface, s.Name as Source
            FROM Types t JOIN Sources s ON t.SourceId = s.Id
            WHERE (t.Name LIKE ? OR t.FullName = ?)
            ORDER BY CASE WHEN t.Name = ? OR t.FullName = ? THEN 0 WHEN t.Name LIKE ? THEN 1 ELSE 2 END, t.Name
-           LIMIT ?`;
+           LIMIT ? OFFSET ?`;
       const params: (string | number)[] = source
-        ? [`%${query}%`, query, source, query, query, `${query}%`, limit]
-        : [`%${query}%`, query, query, query, `${query}%`, limit];
+        ? [`%${query}%`, query, source, query, query, `${query}%`, limit, offset]
+        : [`%${query}%`, query, query, query, `${query}%`, limit, offset];
       items.push(...db.prepare(sql).all(...params) as unknown as TargetSearchResult[]);
     }
 
@@ -39,15 +40,15 @@ export async function findTarget(args: Record<string, unknown>, config: Config) 
            FROM Methods m JOIN Sources s ON m.SourceId = s.Id
            WHERE (m.Name LIKE ? OR m.FullName = ?) AND s.Name = ? AND m.IsAccessor = 0
            ORDER BY CASE WHEN m.Name = ? OR m.FullName = ? THEN 0 WHEN m.Name LIKE ? THEN 1 ELSE 2 END, m.Name
-           LIMIT ?`
+           LIMIT ? OFFSET ?`
         : `SELECT 'method' as Kind, m.FullName, m.Name, m.Signature, m.ReturnType, s.Name as Source
            FROM Methods m JOIN Sources s ON m.SourceId = s.Id
            WHERE (m.Name LIKE ? OR m.FullName = ?) AND m.IsAccessor = 0
            ORDER BY CASE WHEN m.Name = ? OR m.FullName = ? THEN 0 WHEN m.Name LIKE ? THEN 1 ELSE 2 END, m.Name
-           LIMIT ?`;
+           LIMIT ? OFFSET ?`;
       const params: (string | number)[] = source
-        ? [`%${query}%`, query, source, query, query, `${query}%`, limit]
-        : [`%${query}%`, query, query, query, `${query}%`, limit];
+        ? [`%${query}%`, query, source, query, query, `${query}%`, limit, offset]
+        : [`%${query}%`, query, query, query, `${query}%`, limit, offset];
       items.push(...db.prepare(sql).all(...params) as unknown as TargetSearchResult[]);
     }
 
@@ -57,15 +58,15 @@ export async function findTarget(args: Record<string, unknown>, config: Config) 
            FROM Fields f JOIN Types t ON f.TypeId = t.Id JOIN Sources s ON f.SourceId = s.Id
            WHERE f.Name LIKE ? AND s.Name = ?
            ORDER BY CASE WHEN f.Name = ? THEN 0 WHEN f.Name LIKE ? THEN 1 ELSE 2 END, f.Name
-           LIMIT ?`
+           LIMIT ? OFFSET ?`
         : `SELECT 'field' as Kind, f.Name, t.FullName as TypeFullName, f.FieldType, f.IsStatic, s.Name as Source
            FROM Fields f JOIN Types t ON f.TypeId = t.Id JOIN Sources s ON f.SourceId = s.Id
            WHERE f.Name LIKE ?
            ORDER BY CASE WHEN f.Name = ? THEN 0 WHEN f.Name LIKE ? THEN 1 ELSE 2 END, f.Name
-           LIMIT ?`;
+           LIMIT ? OFFSET ?`;
       const params: (string | number)[] = source
-        ? [`%${query}%`, source, query, `${query}%`, limit]
-        : [`%${query}%`, query, `${query}%`, limit];
+        ? [`%${query}%`, source, query, `${query}%`, limit, offset]
+        : [`%${query}%`, query, `${query}%`, limit, offset];
       items.push(...db.prepare(sql).all(...params) as unknown as TargetSearchResult[]);
     }
 
@@ -75,22 +76,22 @@ export async function findTarget(args: Record<string, unknown>, config: Config) 
            FROM Properties p JOIN Types t ON p.TypeId = t.Id JOIN Sources s ON p.SourceId = s.Id
            WHERE p.Name LIKE ? AND s.Name = ?
            ORDER BY CASE WHEN p.Name = ? THEN 0 WHEN p.Name LIKE ? THEN 1 ELSE 2 END, p.Name
-           LIMIT ?`
+           LIMIT ? OFFSET ?`
         : `SELECT 'property' as Kind, p.Name, t.FullName as TypeFullName, p.PropertyType, p.HasGetter, p.HasSetter, s.Name as Source
            FROM Properties p JOIN Types t ON p.TypeId = t.Id JOIN Sources s ON p.SourceId = s.Id
            WHERE p.Name LIKE ?
            ORDER BY CASE WHEN p.Name = ? THEN 0 WHEN p.Name LIKE ? THEN 1 ELSE 2 END, p.Name
-           LIMIT ?`;
+           LIMIT ? OFFSET ?`;
       const params: (string | number)[] = source
-        ? [`%${query}%`, source, query, `${query}%`, limit]
-        : [`%${query}%`, query, `${query}%`, limit];
+        ? [`%${query}%`, source, query, `${query}%`, limit, offset]
+        : [`%${query}%`, query, `${query}%`, limit, offset];
       items.push(...db.prepare(sql).all(...params) as unknown as TargetSearchResult[]);
     }
 
     return items;
   });
 
-  return { content: [{ type: "text" as const, text: formatFindTarget(results) }] };
+  return { content: [{ type: "text" as const, text: formatFindTarget(result) }] };
 }
 
 // get_target_info: 获取类型或方法的全量信息

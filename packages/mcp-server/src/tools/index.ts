@@ -19,7 +19,8 @@ export const toolDefinitions: Tool[] = [
         query: { type: "string", description: "Search keyword" },
         kind: { type: "string", enum: ["type", "method", "field", "property"], description: "Filter by kind" },
         source: { type: "string", description: "Filter by source name" },
-        limit: { type: "number", description: "Max results per kind (default: 20)" }
+        limit: { type: "number", description: "Max results per kind (default: 20)" },
+        offset: { type: "number", description: "Starting position (default: 0)" }
       },
       required: ["query"]
     }
@@ -56,8 +57,9 @@ export const toolDefinitions: Tool[] = [
     inputSchema: {
       type: "object",
       properties: {
-        method: { type: "string", description: "Method FullName/Signature, or TypeFullName.FieldName, or TypeFullName.PropertyName" },
-        limit: { type: "number", description: "Max results (default: 50)" }
+        method: { type: "string", description:         "Method FullName/Signature, or TypeFullName.FieldName, or TypeFullName.PropertyName" },
+        limit: { type: "number", description: "Max results (default: 50)" },
+        offset: { type: "number", description: "Starting position (default: 0)" }
       },
       required: ["method"]
     }
@@ -70,6 +72,7 @@ export const toolDefinitions: Tool[] = [
       properties: {
         method: { type: "string", description: "Method FullName or Signature" },
         limit: { type: "number", description: "Max results (default: 50)" },
+        offset: { type: "number", description: "Starting position (default: 0)" },
         include_field_access: { type: "boolean", description: "Also return field/property accesses (default: false)" }
       },
       required: ["method"]
@@ -98,7 +101,8 @@ export const toolDefinitions: Tool[] = [
       properties: {
         query: { type: "string", description: "Search keyword (can be empty to list all)" },
         def_type: { type: "string", description: "Filter by DefType (e.g. ThingDef)" },
-        limit: { type: "number", description: "Max results (default: 100)" }
+        limit: { type: "number", description: "Max results (default: 100)" },
+        offset: { type: "number", description: "Starting position (default: 0)" }
       },
       required: ["query"]
     }
@@ -130,7 +134,8 @@ export const toolDefinitions: Tool[] = [
       type: "object",
       properties: {
         def_name: { type: "string", description: "Target DefName" },
-        limit: { type: "number", description: "Max results (default: 50)" }
+        limit: { type: "number", description: "Max results (default: 50)" },
+        offset: { type: "number", description: "Starting position (default: 0)" }
       },
       required: ["def_name"]
     }
@@ -155,7 +160,8 @@ export const toolDefinitions: Tool[] = [
       type: "object",
       properties: {
         source: { type: "string", description: "Filter by source name (mod name)" },
-        limit: { type: "number", description: "Max results (default: 100)" }
+        limit: { type: "number", description: "Max results (default: 100)" },
+        offset: { type: "number", description: "Starting position (default: 0)" }
       }
     }
   },
