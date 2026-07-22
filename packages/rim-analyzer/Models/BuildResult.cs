@@ -20,6 +20,14 @@ public class BuildResult
     [JsonPropertyName("defs")]
     public int Defs { get; init; }
 
+    [JsonPropertyName("sourceId")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int? SourceId { get; init; }
+
+    [JsonPropertyName("indexError")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? IndexError { get; init; }
+
     [JsonPropertyName("error")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Error { get; init; }

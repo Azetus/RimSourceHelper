@@ -188,6 +188,7 @@ export interface XmlPatchResult {
 
 // --- sources ---
 export interface SourceResult {
+  Id: number;
   Name: string;
   Type: string;
   PackageId: string | null;

@@ -6,4 +6,6 @@ public class BuildOptions
     public required string GamePath { get; init; }
     public required string Output { get; init; }
     public bool Verbose { get; init; }
+    public string? VectorDb { get; init; }
+    public string? EmbeddingUrl { get; init; }
 }

@@ -32,11 +32,12 @@ public static class BuildCommand
             Description = "Enable verbose logging"
         };
 
+        var vectorDbOption = new Option<string?>("--vector-db") { Description = "Vector index file path (optional)" };
+        var embeddingUrlOption = new Option<string?>("--embedding-url") { Description = "embedding-service URL (optional)" };
+
         var command = new Command("build", "Analyze RimWorld Core + DLCs and build knowledge database")
         {
-            gamePathOption,
-            outputOption,
-            verboseOption
+            gamePathOption, outputOption, verboseOption, vectorDbOption, embeddingUrlOption
         };
 
         command.SetAction((parseResult, _) =>
@@ -45,7 +46,9 @@ public static class BuildCommand
             {
                 GamePath = parseResult.GetValue(gamePathOption)!,
                 Output = parseResult.GetValue(outputOption)!,
-                Verbose = parseResult.GetValue(verboseOption)
+                Verbose = parseResult.GetValue(verboseOption),
+                VectorDb = parseResult.GetValue(vectorDbOption),
+                EmbeddingUrl = parseResult.GetValue(embeddingUrlOption)
             };
 
             try
@@ -165,13 +168,29 @@ public static class BuildCommand
 
             Log("[INFO] Build complete.");
 
+            string? indexError = null;
+            if (options.VectorDb is not null && options.EmbeddingUrl is not null)
+            {
+                try
+                {
+                    Log("[INFO] Building vector index...");
+                    IndexCommand.Execute(options.Output, options.VectorDb, options.EmbeddingUrl, null, options.Verbose ? Log : null);
+                }
+                catch (Exception ex)
+                {
+                    indexError = ex.Message;
+                    Log($"[WARN] Vector index build failed: {ex.Message}");
+                }
+            }
+
             return new BuildResult
             {
                 Status = "success",
                 Types = writeResult.Types,
                 Methods = writeResult.Methods,
                 Calls = callCount,
-                Defs = defResult.Defs
+                Defs = defResult.Defs,
+                IndexError = indexError
             };
         }
         finally

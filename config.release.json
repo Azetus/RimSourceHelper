@@ -16,5 +16,9 @@
         "apiKey": "",
         "timeout": 30
     }
+  },
+  "vectorIndex": {
+    "enabled": false,
+    "databasePath": "./rimsource-vector.db"
   }
 }

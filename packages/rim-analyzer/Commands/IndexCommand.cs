@@ -52,7 +52,7 @@ public static class IndexCommand
         return command;
     }
 
-    private static object Execute(string dbPath, string vectorDbPath, string embeddingUrl,
+    internal static object Execute(string dbPath, string vectorDbPath, string embeddingUrl,
         long? sourceId, Action<string>? log)
     {
         if (!File.Exists(dbPath))

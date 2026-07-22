@@ -2,10 +2,22 @@ import { readFileSync, existsSync } from "fs";
 import { resolve, dirname } from "path";
 import { fileURLToPath } from "url";
 
+export interface EmbeddingServiceConfig {
+  host: string;
+  port: number;
+}
+
+export interface VectorIndexConfig {
+  enabled: boolean;
+  databasePath: string;
+}
+
 export interface Config {
   gamePath: string;
   databasePath: string;
   analyzerPath: string;
+  embeddingService?: EmbeddingServiceConfig;
+  vectorIndex?: VectorIndexConfig;
 }
 
 // 从脚本所在目录向上逐级搜索 config.json
@@ -18,6 +30,8 @@ export function loadConfig(): Config {
   // 相对路径基于 config.json 所在目录解析
   config.databasePath = resolve(configDir, config.databasePath);
   config.analyzerPath = resolve(configDir, config.analyzerPath);
+  if (config.vectorIndex?.databasePath)
+    config.vectorIndex.databasePath = resolve(configDir, config.vectorIndex.databasePath);
 
   return config;
 }

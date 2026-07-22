@@ -328,7 +328,7 @@ export function formatSourceList(sources: SourceResult[]): string {
   const lines: string[] = [`## Sources (${sources.length})`];
   for (const s of sources) {
     const pkg = s.PackageId ? ` — ${s.PackageId}` : "";
-    lines.push(`- **${s.Name}** (${s.Type})${pkg}`);
+    lines.push(`- **${s.Name}** [id=${s.Id}] (${s.Type})${pkg}`);
   }
   return lines.join("\n");
 }

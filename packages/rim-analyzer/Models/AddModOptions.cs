@@ -7,4 +7,6 @@ public class AddModOptions
     public required string Database { get; init; }
     public required string GamePath { get; init; }
     public bool Verbose { get; init; }
+    public string? VectorDb { get; init; }
+    public string? EmbeddingUrl { get; init; }
 }
