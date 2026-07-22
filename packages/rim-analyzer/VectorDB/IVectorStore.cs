@@ -16,6 +16,9 @@ public interface IVectorStore : IDisposable
     VectorConfig? GetConfig();
     void SetConfig(VectorConfig config);
 
+    // 按 SourceId 删除旧条目（add-mod 幂等重建时用）
+    void DeleteBySourceId(long sourceId);
+
     // 清空索引
     void Clear();
 }

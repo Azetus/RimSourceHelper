@@ -40,20 +40,20 @@ public static class SemanticFormatter
     // comp shield pre apply damage damage info
     // calls Verse.CompShield.ConsumeEnergy
     // consume energy reduce shield
-    public static string FormatMethod(string parentFullName, MethodEntity method,
-        string[] calleeFullNames)
+    public static string FormatMethod(string parentFullName, string methodName,
+        string? returnType, string? paramTypesJson, string[] calleeFullNames)
     {
-        var paramTypeShortNames = ParseParamShortNames(method.ParamTypes);
+        var paramTypeShortNames = ParseParamShortNames(paramTypesJson);
 
-        var line1 = new List<string> { "method", $"{parentFullName}.{method.Name}" };
+        var line1 = new List<string> { "method", $"{parentFullName}.{methodName}" };
 
-        var ret = ShortName(method.ReturnType ?? "void");
+        var ret = ShortName(returnType ?? "void");
         line1.Add($"returns {ret}");
 
         if (paramTypeShortNames.Length > 0)
             line1.Add($"params {string.Join(" ", paramTypeShortNames)}");
 
-        var tokens = new List<string> { method.Name, ShortName(parentFullName) };
+        var tokens = new List<string> { methodName, ShortName(parentFullName) };
         tokens.AddRange(paramTypeShortNames);
 
         var result = new List<string> { string.Join(" ", line1), Tokenize(tokens) };
@@ -70,21 +70,22 @@ public static class SemanticFormatter
     // Field 模板
     // field Verse.PawnKindDef.isFighter type boolean
     // is fighter
-    public static string FormatField(string parentFullName, FieldEntity field)
+    public static string FormatField(string parentFullName, string fieldName, string? fieldType)
     {
-        var line1 = $"field {parentFullName}.{field.Name} type {ShortName(field.FieldType ?? "object")}";
-        return $"{line1}\n{Tokenize(field.Name)}";
+        var line1 = $"field {parentFullName}.{fieldName} type {ShortName(fieldType ?? "object")}";
+        return $"{line1}\n{Tokenize(fieldName)}";
     }
 
     // Property 模板
     // property Verse.Thing.Label type string get set
     // label
-    public static string FormatProperty(string parentFullName, PropertyEntity prop)
+    public static string FormatProperty(string parentFullName, string propName,
+        string? propType, bool hasGetter, bool hasSetter)
     {
-        var parts = new List<string> { "property", $"{parentFullName}.{prop.Name}", "type", ShortName(prop.PropertyType ?? "object") };
-        if (prop.HasGetter) parts.Add("get");
-        if (prop.HasSetter) parts.Add("set");
-        return $"{string.Join(" ", parts)}\n{Tokenize(prop.Name)}";
+        var parts = new List<string> { "property", $"{parentFullName}.{propName}", "type", ShortName(propType ?? "object") };
+        if (hasGetter) parts.Add("get");
+        if (hasSetter) parts.Add("set");
+        return $"{string.Join(" ", parts)}\n{Tokenize(propName)}";
     }
 
     // Def 模板

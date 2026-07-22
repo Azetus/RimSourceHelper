@@ -13,6 +13,7 @@ class Program
         rootCommand.Add(RemoveModCommand.Create());
         rootCommand.Add(DecompileCommand.Create());
         rootCommand.Add(HarmonyCommand.Create());
+        rootCommand.Add(IndexCommand.Create());
         return rootCommand.Parse(args).Invoke();
     }
 }

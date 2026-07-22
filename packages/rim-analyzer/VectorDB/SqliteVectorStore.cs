@@ -32,6 +32,7 @@ public class SqliteVectorStore : IVectorStore
             CREATE TABLE IF NOT EXISTS vector_metadata (
                 rowid     INTEGER PRIMARY KEY AUTOINCREMENT,
                 sqlite_id INTEGER NOT NULL,
+                source_id INTEGER NOT NULL,
                 kind      TEXT    NOT NULL,
                 full_name TEXT    NOT NULL
             );
@@ -44,6 +45,7 @@ public class SqliteVectorStore : IVectorStore
             """);
 
         _connection.Execute("CREATE INDEX IF NOT EXISTS idx_vmeta_sqlite_id ON vector_metadata(sqlite_id);");
+        _connection.Execute("CREATE INDEX IF NOT EXISTS idx_vmeta_source ON vector_metadata(source_id);");
     }
 
     // 批量写入：metadata → last_insert_rowid → vectors
@@ -60,8 +62,8 @@ public class SqliteVectorStore : IVectorStore
             var vectorJson = SerializeVector(vectors[i]);
 
             _connection.Execute(
-                "INSERT INTO vector_metadata (sqlite_id, kind, full_name) VALUES (@id, @kind, @name)",
-                new { id = doc.SqliteId, kind = doc.Kind, name = doc.FullName },
+                "INSERT INTO vector_metadata (sqlite_id, source_id, kind, full_name) VALUES (@id, @sid, @kind, @name)",
+                new { id = doc.SqliteId, sid = doc.SourceId, kind = doc.Kind, name = doc.FullName },
                 tx);
 
             _connection.Execute(
@@ -123,6 +125,13 @@ public class SqliteVectorStore : IVectorStore
                 new { key = "model", value = config.Model },
                 new { key = "dimension", value = config.Dimension.ToString() }
             });
+    }
+
+    // 按 SourceId 删除条目 + 清理 orphan vectors（add-mod 幂等重建时用）
+    public void DeleteBySourceId(long sourceId)
+    {
+        _connection.Execute("DELETE FROM vector_metadata WHERE source_id = @sid", new { sid = sourceId });
+        _connection.Execute("DELETE FROM vectors WHERE rowid NOT IN (SELECT rowid FROM vector_metadata)");
     }
 
     // 清空索引数据
