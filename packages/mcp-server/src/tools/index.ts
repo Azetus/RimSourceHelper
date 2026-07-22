@@ -7,7 +7,7 @@ import { findHarmonyPatches, listHarmonyPatches } from "./harmony.js";
 import { findXmlPatches, listXmlPatches } from "./defs.js";
 import { buildDatabase, addMod, removeMod, listSources } from "./management.js";
 
-// 全部 16 个工具的定义
+// 全部 19 个工具的定义
 export const toolDefinitions: Tool[] = [
   // --- 搜索与发现 ---
   {

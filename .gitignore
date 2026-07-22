@@ -32,3 +32,9 @@ release/
 
 packages/rim-analyzer/publish/*
 packages/rim-analyzer/publish
+
+models/
+# Python 缓存
+__pycache__/
+*.pyc
+*.pyo

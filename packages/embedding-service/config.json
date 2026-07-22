@@ -1,0 +1,13 @@
+{
+  "host": "127.0.0.1",
+  "port": 8000,
+  "provider": "local",
+  "model": "BAAI/bge-m3",
+  "modelPath": "./models",
+  "batchSize": 32,
+
+  "api": {
+    "endpoint": "http://localhost:11434/v1/embeddings",
+    "key": ""
+  }
+}
