@@ -3,11 +3,13 @@
   "port": 8000,
   "provider": "local",
   "model": "BAAI/bge-m3",
-  "modelPath": "./models",
   "batchSize": 32,
-
+  "local": {
+    "cachePath": "./models"
+  },
   "api": {
-    "endpoint": "http://localhost:11434/v1/embeddings",
-    "key": ""
+    "endpoint": "http://127.0.0.1:1234/v1/embeddings",
+    "apiKey": "",
+    "timeout": 30
   }
 }

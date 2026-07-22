@@ -37,17 +37,18 @@ def create_provider(config: dict) -> EmbeddingProvider:
     batch_size = config.get("batchSize", 32)
 
     if provider_type == "local":
-        model_path = config.get("modelPath")
-        if not model_path:
-            raise ValueError("modelPath is required when provider=local")
-        return LocalProvider(model, model_path, batch_size)
+        local_cfg = config.get("local", {})
+        cache_path = local_cfg.get("cachePath")
+        if not cache_path:
+            raise ValueError("local.cachePath is required when provider=local")
+        return LocalProvider(model, cache_path, batch_size)
 
     if provider_type == "api":
         api_cfg = config.get("api", {})
         endpoint = api_cfg.get("endpoint")
         if not endpoint:
             raise ValueError("api.endpoint is required when provider=api")
-        return ApiProvider(endpoint, model, api_cfg.get("key", ""))
+        return ApiProvider(endpoint, model, api_cfg.get("apiKey", ""), api_cfg.get("timeout", 30))
 
     raise ValueError(f"Unknown provider: {provider_type}")
 

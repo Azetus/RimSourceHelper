@@ -6,10 +6,11 @@ from .base import EmbeddingProvider
 class ApiProvider(EmbeddingProvider):
     """外部 API：通过 OpenAI 兼容端点（Ollama / LM Studio / 云端）获取向量。"""
 
-    def __init__(self, endpoint: str, model: str, api_key: str = ""):
+    def __init__(self, endpoint: str, model: str, api_key: str = "", timeout: float = 30):
         self._endpoint = endpoint.rstrip("/")
         self._model = model
         self._api_key = api_key
+        self._timeout = timeout
 
         # 探测维度：编码单条 "test" 文本
         test_vectors = self.embed(["test"])
@@ -25,7 +26,7 @@ class ApiProvider(EmbeddingProvider):
             "input": texts
         }
 
-        with httpx.Client(timeout=30) as client:
+        with httpx.Client(timeout=self._timeout) as client:
             resp = client.post(self._endpoint, json=payload, headers=headers)
             resp.raise_for_status()
             data = resp.json()

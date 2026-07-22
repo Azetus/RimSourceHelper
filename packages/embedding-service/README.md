@@ -18,23 +18,25 @@ pip install -r requirements.txt
   "port": 8000,
   "provider": "local",
   "model": "bge-m3",
-  "modelPath": "./models",
   "batchSize": 32,
-
+  "local": {
+    "cachePath": "./models"
+  },
   "api": {
     "endpoint": "http://localhost:11434/v1/embeddings",
-    "key": ""
+    "apiKey": "",
+    "timeout": 30
   }
 }
 ```
 
 ### provider = "local"
 
-使用本地模型。`model` 为 HuggingFace 模型名，`modelPath` 为权重缓存目录。sentence-transformers 会自动在该目录下查找模型，存在则直接加载，不存在则从 HuggingFace 下载。
+使用本地模型。`model` 为 HuggingFace 模型名，`local.cachePath` 为权重缓存目录。sentence-transformers 自动在该目录下查找，存在则加载，不存在则从 HuggingFace 下载。
 
 ### provider = "api"
 
-使用 OpenAI 兼容的 embedding API（Ollama、LM Studio、云端）。
+使用 OpenAI 兼容的 embedding API（Ollama、LM Studio、云端）。`api.endpoint` 为接口地址，`api.apiKey` 可选。
 
 ## 启动
 

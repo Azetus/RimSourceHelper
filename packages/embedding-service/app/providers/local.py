@@ -5,7 +5,7 @@ from .base import EmbeddingProvider
 
 
 class LocalProvider(EmbeddingProvider):
-    """本地模型：通过 sentence-transformers 加载。自动从 HuggingFace 下载或从缓存目录加载。"""
+    """本地模型：优先从缓存加载，不存在则从 HuggingFace 下载。"""
 
     def __init__(self, model_name: str, model_path: str, batch_size: int = 32):
         abs_path = os.path.abspath(model_path)
@@ -13,8 +13,10 @@ class LocalProvider(EmbeddingProvider):
         self._cache_dir = abs_path
         self._batch_size = batch_size
 
-        # cache_folder: 模型存在则加载，不存在则自动下载到该目录
-        self._model = SentenceTransformer(model_name, cache_folder=abs_path)
+        try:
+            self._model = SentenceTransformer(model_name, cache_folder=abs_path, local_files_only=True)
+        except Exception:
+            self._model = SentenceTransformer(model_name, cache_folder=abs_path)
 
     def embed(self, texts: list[str]) -> np.ndarray:
         return self._model.encode(
