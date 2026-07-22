@@ -1,3 +1,4 @@
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using RimAnalyzer.Models;
 
@@ -40,8 +41,10 @@ public static class SemanticFormatter
     // calls Verse.CompShield.ConsumeEnergy
     // consume energy reduce shield
     public static string FormatMethod(string parentFullName, MethodEntity method,
-        string[] paramTypeShortNames, string[] calleeFullNames)
+        string[] calleeFullNames)
     {
+        var paramTypeShortNames = ParseParamShortNames(method.ParamTypes);
+
         var line1 = new List<string> { "method", $"{parentFullName}.{method.Name}" };
 
         var ret = ShortName(method.ReturnType ?? "void");
@@ -116,6 +119,17 @@ public static class SemanticFormatter
         var dot = fullName.LastIndexOf('.');
         var name = dot >= 0 ? fullName[(dot + 1)..] : fullName;
         return Tokenize(name);
+    }
+
+    // 解析 JSON 参数类型数组 → ShortName 列表
+    private static string[] ParseParamShortNames(string? paramTypesJson)
+    {
+        if (string.IsNullOrEmpty(paramTypesJson)) return [];
+
+        var fullNames = JsonSerializer.Deserialize<string[]>(paramTypesJson);
+        if (fullNames is null) return [];
+
+        return fullNames.Select(ShortName).ToArray();
     }
 
     // CamelCase 分词 + 全小写：PreApplyDamage → pre apply damage

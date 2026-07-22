@@ -67,6 +67,7 @@ public static class DatabaseInitializer
             IsVirtual     INTEGER NOT NULL DEFAULT 0,
             IsAbstract    INTEGER NOT NULL DEFAULT 0,
             IsAccessor    INTEGER NOT NULL DEFAULT 0,
+            ParamTypes    TEXT,
             Accessibility TEXT,
             SourceId      INTEGER NOT NULL REFERENCES Sources(Id)
         );

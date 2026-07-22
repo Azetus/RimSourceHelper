@@ -13,6 +13,7 @@ public class MethodEntity
     public bool IsVirtual { get; set; }
     public bool IsAbstract { get; set; }
     public bool IsAccessor { get; set; }
+    public string? ParamTypes { get; set; }
     public string? Accessibility { get; set; }
     public long SourceId { get; set; }
 }

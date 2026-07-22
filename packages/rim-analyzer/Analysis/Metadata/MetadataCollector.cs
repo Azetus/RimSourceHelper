@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Mono.Cecil;
 using RimAnalyzer.Models;
 
@@ -90,6 +91,7 @@ public static class MetadataCollector
                 IsVirtual = method.IsVirtual,
                 IsAbstract = method.IsAbstract,
                 IsAccessor = isAccessor,
+                ParamTypes = JsonSerializer.Serialize(method.Parameters.Select(p => p.ParameterType.FullName).ToArray()),
                 Accessibility = GetMethodAccessibility(method)
             };
 
