@@ -1,5 +1,20 @@
 {
   "gamePath": "<Enter your RimWorld installation directory here>",
   "databasePath": "./rimworld.db",
-  "analyzerPath": "./rim-analyzer/rim-analyzer.dll"
+  "analyzerPath": "./rim-analyzer/rim-analyzer.dll",
+  "embeddingService": {
+    "host": "127.0.0.1",
+    "port": 8000,
+    "provider": "local",
+    "model": "BAAI/bge-m3",
+    "batchSize": 32,
+    "local": {
+        "cachePath": "./models"
+    },
+    "api": {
+        "endpoint": "http://127.0.0.1:1234/v1/embeddings",
+        "apiKey": "",
+        "timeout": 30
+    }
+  }
 }
