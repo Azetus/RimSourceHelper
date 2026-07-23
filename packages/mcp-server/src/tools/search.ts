@@ -1,10 +1,13 @@
 import type { DatabaseSync } from "node:sqlite";
+import { createRequire } from "node:module";
 import type { Config } from "../config.js";
 import type { TargetSearchResult, TypeInfoResult, MethodInfoResult, MethodReference, HarmonyPatchEntry, TypeMembersResult, MemberMethod, MemberField, MemberProperty } from "../types.js";
 import { withDatabase } from "../utils/database.js";
 import { runAnalyzer } from "../utils/analyzer.js";
 import { formatFindTarget, formatTypeInfo, formatMethodInfo, formatTypeMembers, formatSemanticSearch } from "../utils/formatter.js";
 import { embeddingHealthCheck, embeddingGetInfo, embeddingEmbed } from "../utils/embeddingClient.js";
+
+const cjsRequire = createRequire(import.meta.url);
 
 // find_target: 模糊搜索类型或方法，返回摘要列表
 export async function findTarget(args: Record<string, unknown>, config: Config) {
@@ -378,8 +381,8 @@ function vectorSearch(
   limit: number,
   queryConfig: { provider: string; model: string; dimension: number }
 ): SearchResultItem[] {
-  const Database = require("better-sqlite3");
-  const sqliteVec = require("sqlite-vec");
+  const Database = cjsRequire("better-sqlite3");
+  const sqliteVec = cjsRequire("sqlite-vec");
 
   const db = new Database(vectorDbPath, { readonly: true });
   try {

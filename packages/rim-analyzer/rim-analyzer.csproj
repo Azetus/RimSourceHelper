@@ -14,12 +14,18 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <PackageReference Include="Dapper" Version="2.1.79" />
-      <PackageReference Include="Microsoft.Data.Sqlite" Version="11.0.0-preview.5.26302.115" />
-      <PackageReference Include="Microsoft.SemanticKernel.Connectors.SqliteVec" Version="1.74.0-preview" />
-      <PackageReference Include="Mono.Cecil" Version="0.11.6" />
-      <PackageReference Include="ICSharpCode.Decompiler" Version="10.1.0.8386" />
-      <PackageReference Include="System.CommandLine" Version="3.0.0-preview.5.26302.115" />
+        <PackageReference Include="Dapper" Version="2.1.79" />
+        <PackageReference Include="Microsoft.Data.Sqlite" Version="11.0.0-preview.5.26302.115" />
+        <PackageReference Include="Mono.Cecil" Version="0.11.6" />
+        <PackageReference Include="ICSharpCode.Decompiler" Version="10.1.0.8386" />
+        <PackageReference Include="sqlite-vec" Version="0.1.7-alpha.2.1" />
+        <PackageReference Include="System.CommandLine" Version="3.0.0-preview.5.26302.115" />
     </ItemGroup>
-
+    <ItemGroup>
+        <Content Include="$(NuGetPackageRoot)sqlite-vec\**\runtimes\win-x64\native\vec0.dll">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+            <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+            <Link>vec0.dll</Link>
+        </Content>
+    </ItemGroup>
 </Project>

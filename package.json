@@ -5,9 +5,11 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "pnpm run build:analyzer && pnpm run build:mcp && pnpm run build:copy",
+     "clean": "node scripts/clean-release.mjs",
+    "build": "pnpm run clean && pnpm run build:analyzer && pnpm run build:mcp && pnpm run build:mcp-deps && pnpm run build:copy",
     "build:analyzer": "dotnet publish packages/rim-analyzer -c Release",
-    "build:mcp": "esbuild packages/mcp-server/src/index.ts --bundle --platform=node --format=esm --outfile=release/index.js",
+    "build:mcp": "node esbuild.mjs",
+    "build:mcp-deps": "node scripts/copy-mcp-deps.mjs",
     "build:copy": "node scripts/copy-release-files.mjs",
     "typecheck": "pnpm --filter rimsourcehelper-mcp exec tsc --noEmit",
     "dev:mcp": "pnpm --filter rimsourcehelper-mcp dev"
