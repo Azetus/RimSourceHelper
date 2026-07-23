@@ -332,3 +332,41 @@ export function formatSourceList(sources: SourceResult[]): string {
   }
   return lines.join("\n");
 }
+
+// --- semantic_search ---
+export interface SemanticSearchItem {
+  kind: string;
+  fullName: string;
+  distance: number;
+  summary: string;
+}
+
+export function formatSemanticSearch(results: SemanticSearchItem[], query: string): string {
+  const byKind = new Map<string, SemanticSearchItem[]>();
+  for (const r of results) {
+    const group = byKind.get(r.kind) ?? [];
+    group.push(r);
+    byKind.set(r.kind, group);
+  }
+
+  const lines: string[] = [
+    `## Semantic Search Results (${results.length}) for "${query}"`,
+    "",
+  ];
+
+  const order = ["type", "method", "field", "property", "def"];
+  for (const kind of order) {
+    const group = byKind.get(kind);
+    if (!group || group.length === 0) continue;
+
+    const label = { type: "Types", method: "Methods", field: "Fields", property: "Properties", def: "Defs" }[kind] ?? kind;
+    lines.push(`### ${label} (${group.length})`);
+
+    for (const r of group) {
+      lines.push(`- \`${r.fullName}\` [${r.distance.toFixed(2)}] — ${r.summary}`);
+    }
+    lines.push("");
+  }
+
+  return lines.join("\n");
+}

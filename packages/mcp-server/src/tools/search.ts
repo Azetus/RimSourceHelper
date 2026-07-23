@@ -3,7 +3,8 @@ import type { Config } from "../config.js";
 import type { TargetSearchResult, TypeInfoResult, MethodInfoResult, MethodReference, HarmonyPatchEntry, TypeMembersResult, MemberMethod, MemberField, MemberProperty } from "../types.js";
 import { withDatabase } from "../utils/database.js";
 import { runAnalyzer } from "../utils/analyzer.js";
-import { formatFindTarget, formatTypeInfo, formatMethodInfo, formatTypeMembers } from "../utils/formatter.js";
+import { formatFindTarget, formatTypeInfo, formatMethodInfo, formatTypeMembers, formatSemanticSearch } from "../utils/formatter.js";
+import { embeddingHealthCheck, embeddingGetInfo, embeddingEmbed } from "../utils/embeddingClient.js";
 
 // find_target: 模糊搜索类型或方法，返回摘要列表
 export async function findTarget(args: Record<string, unknown>, config: Config) {
@@ -297,4 +298,285 @@ function gatherMethodInfo(db: DatabaseSync, methods: Record<string, unknown>[]):
     CalleesTruncated: calleesTruncated,
     HarmonyPatches: patches
   };
+}
+
+// --- semantic_search ---
+
+interface VectorSearchRow {
+  sqlite_id: number;
+  kind: string;
+  full_name: string;
+  distance: number;
+}
+
+interface SearchResultItem {
+  sqliteId: number;
+  kind: string;
+  fullName: string;
+  distance: number;
+  summary: string;
+}
+
+export async function semanticSearch(args: Record<string, unknown>, config: Config) {
+  const query = args.query as string;
+  const limit = (args.limit as number) ?? 10;
+
+  if (!query || query.trim().length === 0) {
+    return { content: [{ type: "text" as const, text: "query is required" }], isError: true };
+  }
+
+  if (!config.vectorIndex?.enabled) {
+    return { content: [{ type: "text" as const, text: "Vector index is not enabled. Enable vectorIndex.enabled in config.json and rebuild the index." }], isError: true };
+  }
+
+  if (!config.embeddingService) {
+    return { content: [{ type: "text" as const, text: "embeddingService is not configured." }], isError: true };
+  }
+
+  const baseUrl = `http://${config.embeddingService.host}:${config.embeddingService.port}`;
+  const vectorDbPath = config.vectorIndex.databasePath;
+
+  try {
+    // 1. 检查 embedding-service 可用性
+    if (!(await embeddingHealthCheck(baseUrl))) {
+      return { content: [{ type: "text" as const, text: "embedding-service is not available." }], isError: true };
+    }
+
+    // 2. 获取当前模型信息
+    const queryConfig = await embeddingGetInfo(baseUrl);
+
+    // 3. 编码查询
+    const vectors = await embeddingEmbed(baseUrl, [query]);
+    const queryVector = vectors[0];
+
+    // 4. 向量检索
+    const searchResults = vectorSearch(vectorDbPath, queryVector, limit, queryConfig);
+
+    if (searchResults.length === 0) {
+      return { content: [{ type: "text" as const, text: `No results found for: "${query}"` }] };
+    }
+
+    // 5. 构建 summary
+    withDatabase(config.databasePath, (db) => {
+      buildSummaries(db, searchResults);
+    });
+
+    // 6. 格式化输出
+    return { content: [{ type: "text" as const, text: formatSemanticSearch(searchResults, query) }] };
+
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return { content: [{ type: "text" as const, text: `Semantic search failed: ${msg}` }], isError: true };
+  }
+}
+
+// ==== 向量检索（better-sqlite3 + sqlite-vec）====
+
+function vectorSearch(
+  vectorDbPath: string,
+  queryVector: number[],
+  limit: number,
+  queryConfig: { provider: string; model: string; dimension: number }
+): SearchResultItem[] {
+  const Database = require("better-sqlite3");
+  const sqliteVec = require("sqlite-vec");
+
+  const db = new Database(vectorDbPath, { readonly: true });
+  try {
+    sqliteVec.load(db);
+
+    // 校验模型配置
+    const configRows = db.prepare("SELECT key, value FROM vector_config").all() as { key: string; value: string }[];
+    const storedConfig: Record<string, string> = {};
+    for (const r of configRows) storedConfig[r.key] = r.value;
+
+    if (!storedConfig.provider || !storedConfig.model || !storedConfig.dimension) {
+      throw new Error("Vector index not built. Run 'index' first.");
+    }
+
+    if (queryConfig.dimension !== parseInt(storedConfig.dimension)) {
+      throw new Error(`Dimension mismatch: stored=${storedConfig.dimension}, query=${queryConfig.dimension}`);
+    }
+    if (queryConfig.model.toLowerCase() !== storedConfig.model.toLowerCase()) {
+      throw new Error(`Model mismatch: stored=${storedConfig.model}, query=${queryConfig.model}`);
+    }
+
+    // 检索
+    const rows = db.prepare(`
+      SELECT v.distance, m.sqlite_id, m.kind, m.full_name
+      FROM vectors v
+      JOIN vector_metadata m ON v.rowid = m.rowid
+      WHERE v.embedding MATCH ?
+      ORDER BY v.distance
+      LIMIT ?
+    `).all(JSON.stringify(queryVector), limit) as VectorSearchRow[];
+
+    return rows.map(r => ({
+      sqliteId: r.sqlite_id,
+      kind: r.kind,
+      fullName: r.full_name,
+      distance: r.distance,
+      summary: "",  // 稍后填充
+    }));
+  } finally {
+    db.close();
+  }
+}
+
+// ==== 批量构建 summary（查询主 SQLite DB）====
+
+function buildSummaries(db: DatabaseSync, items: SearchResultItem[]): void {
+  const byKind = new Map<string, { item: SearchResultItem; id: number }[]>();
+
+  for (const item of items) {
+    const group = byKind.get(item.kind) ?? [];
+    group.push({ item, id: item.sqliteId });
+    byKind.set(item.kind, group);
+  }
+
+  // Types
+  const typeGroup = byKind.get("type");
+  if (typeGroup) {
+    const ids = typeGroup.map(g => g.id);
+    const placeholders = ids.map(() => "?").join(",");
+    const rows = db.prepare(`SELECT Id, FullName, BaseType, IsAbstract, IsInterface, IsEnum, IsSealed FROM Types WHERE Id IN (${placeholders})`).all(...ids) as Record<string, unknown>[];
+    const map = new Map<number, Record<string, unknown>>();
+    for (const r of rows) map.set(r.Id as number, r);
+
+    const allTypeIds = rows.map(r => r.Id as number);
+    const ifaceMap = allTypeIds.length > 0 ? buildInterfaceMap(db, allTypeIds) : new Map<number, string[]>();
+
+    for (const { item, id } of typeGroup) {
+      const t = map.get(id);
+      if (!t) continue;
+      const parts: string[] = [];
+
+      if (t.IsInterface) parts.push("interface");
+      else if (t.IsEnum) parts.push("enum");
+      else if (t.IsAbstract) parts.push("abstract class");
+      else if (t.IsSealed) parts.push("sealed class");
+      else parts.push("class");
+
+      parts.push(t.FullName as string);
+
+      const base = t.BaseType as string | null;
+      if (base && base !== "System.Object") parts.push(`base ${base}`);
+
+      const ifaces = ifaceMap.get(id) ?? [];
+      if (ifaces.length > 0) parts.push(`implements ${ifaces.join(", ")}`);
+
+      item.summary = parts.join(" ");
+    }
+  }
+
+  // Methods
+  const methodGroup = byKind.get("method");
+  if (methodGroup) {
+    const ids = methodGroup.map(g => g.id);
+    const placeholders = ids.map(() => "?").join(",");
+    const rows = db.prepare(`
+      SELECT m.Id, m.ReturnType, m.ParamTypes, t.FullName AS ParentFullName
+      FROM Methods m JOIN Types t ON m.TypeId = t.Id
+      WHERE m.Id IN (${placeholders})
+    `).all(...ids) as Record<string, unknown>[];
+    const map = new Map<number, Record<string, unknown>>();
+    for (const r of rows) map.set(r.Id as number, r);
+
+    for (const { item, id } of methodGroup) {
+      const m = map.get(id);
+      if (!m) continue;
+      const parts = ["method", item.fullName, "returns", (m.ReturnType as string) ?? "void"];
+      const paramJson = m.ParamTypes as string | null;
+      if (paramJson) {
+        try {
+          const params = JSON.parse(paramJson) as string[];
+          if (params.length > 0) parts.push(`params ${params.map(p => p.split(".").pop()!).join(", ")}`);
+        } catch { /* ignore bad JSON */ }
+      }
+      item.summary = parts.join(" ");
+    }
+  }
+
+  // Fields
+  const fieldGroup = byKind.get("field");
+  if (fieldGroup) {
+    buildSimpleSummary(db, fieldGroup, "Fields", "FieldType", (f, t) => {
+      const parts = ["field", `${t.FullName}.${f.Name}`];
+      parts.push("type", (f.FieldType as string) ?? "object");
+      if (f.IsStatic) parts.push("static");
+      return parts.join(" ");
+    });
+  }
+
+  // Properties
+  const propGroup = byKind.get("property");
+  if (propGroup) {
+    buildSimpleSummary(db, propGroup, "Properties", "PropertyType", (p, t) => {
+      const parts = ["property", `${t.FullName}.${p.Name}`];
+      parts.push("type", (p.PropertyType as string) ?? "object");
+      if (p.HasGetter) parts.push("get");
+      if (p.HasSetter) parts.push("set");
+      return parts.join(" ");
+    });
+  }
+
+  // Defs
+  const defGroup = byKind.get("def");
+  if (defGroup) {
+    const ids = defGroup.map(g => g.id);
+    const placeholders = ids.map(() => "?").join(",");
+    const rows = db.prepare(`SELECT Id, DefType, DefName, Label, IsAbstract FROM Defs WHERE Id IN (${placeholders})`).all(...ids) as Record<string, unknown>[];
+    const map = new Map<number, Record<string, unknown>>();
+    for (const r of rows) map.set(r.Id as number, r);
+
+    for (const { item, id } of defGroup) {
+      const d = map.get(id);
+      if (!d) continue;
+      const parts = ["def", d.DefType as string, d.DefName as string];
+      if (d.IsAbstract) parts.push("abstract");
+      if (d.Label) parts.push(`label "${d.Label}"`);
+      item.summary = parts.join(" ");
+    }
+  }
+}
+
+function buildSimpleSummary(
+  db: DatabaseSync,
+  group: { item: SearchResultItem; id: number }[],
+  table: string,
+  _typeCol: string,
+  formatter: (row: Record<string, unknown>, type: Record<string, unknown>) => string
+): void {
+  const ids = group.map(g => g.id);
+  const placeholders = ids.map(() => "?").join(",");
+  const rows = db.prepare(`
+    SELECT f.Id, f.Name, f.*, t.FullName AS TypeFullName
+    FROM ${table} f JOIN Types t ON f.TypeId = t.Id
+    WHERE f.Id IN (${placeholders})
+  `).all(...ids) as Record<string, unknown>[];
+  const map = new Map<number, Record<string, unknown>>();
+  for (const r of rows) map.set(r.Id as number, r);
+
+  for (const { item, id } of group) {
+    const f = map.get(id);
+    if (!f) continue;
+    item.summary = formatter(f, { FullName: f.TypeFullName });
+  }
+}
+
+function buildInterfaceMap(db: DatabaseSync, typeIds: number[]): Map<number, string[]> {
+  const map = new Map<number, string[]>();
+  if (typeIds.length === 0) return map;
+  const placeholders = typeIds.map(() => "?").join(",");
+  const rows = db.prepare(`
+    SELECT i.ChildTypeId, t.FullName
+    FROM Inheritance i JOIN Types t ON i.ParentTypeId = t.Id
+    WHERE i.IsInterface = 1 AND i.ChildTypeId IN (${placeholders})
+  `).all(...typeIds) as { ChildTypeId: number; FullName: string }[];
+  for (const r of rows) {
+    const list = map.get(r.ChildTypeId) ?? [];
+    list.push(r.FullName);
+    map.set(r.ChildTypeId, list);
+  }
+  return map;
 }

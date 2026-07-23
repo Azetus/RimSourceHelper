@@ -1,6 +1,6 @@
 import type { Tool } from "@modelcontextprotocol/sdk/types.js";
 import type { Config } from "../config.js";
-import { findTarget, getTargetInfo, listTypeMembers, decompile } from "./search.js";
+import { findTarget, getTargetInfo, listTypeMembers, decompile, semanticSearch } from "./search.js";
 import { getCallers, getCallees, getCallTree } from "./callgraph.js";
 import { searchDefs, getDefDetails, listDefTypes, findDefReferences } from "./defs.js";
 import { findHarmonyPatches, listHarmonyPatches } from "./harmony.js";
@@ -47,6 +47,18 @@ export const toolDefinitions: Tool[] = [
         kind: { type: "string", enum: ["methods", "fields", "properties", "all"], description: "Filter by member kind (default: all)" }
       },
       required: ["type_name"]
+    }
+  },
+  {
+    name: "semantic_search",
+    description: "Search the knowledge base using natural language. Finds relevant types, methods, fields, properties, and defs through vector similarity.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        query: { type: "string", description: "Natural language query describing what to find" },
+        limit: { type: "number", description: "Max results (default: 10)" }
+      },
+      required: ["query"]
     }
   },
 
@@ -263,6 +275,7 @@ export async function handleToolCall(
     case "find_target": return findTarget(safeArgs, config);
     case "get_target_info": return getTargetInfo(safeArgs, config);
     case "list_type_members": return listTypeMembers(safeArgs, config);
+    case "semantic_search": return semanticSearch(safeArgs, config);
     case "get_callers": return getCallers(safeArgs, config);
     case "get_callees": return getCallees(safeArgs, config);
     case "get_call_tree": return getCallTree(safeArgs, config);
