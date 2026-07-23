@@ -67,7 +67,7 @@ public class SqliteVectorStore : IVectorStore
                 tx);
 
             _connection.Execute(
-                "INSERT INTO vectors (rowid, embedding) VALUES (last_insert_rowid(), ?)",
+                "INSERT INTO vectors (rowid, embedding) VALUES (last_insert_rowid(), @vector)",
                 new { vector = vectorJson },
                 tx);
         }
@@ -90,9 +90,9 @@ public class SqliteVectorStore : IVectorStore
             SELECT m.sqlite_id AS SqliteId, m.kind AS Kind, m.full_name AS FullName, v.distance AS Distance
             FROM vectors v
             JOIN vector_metadata m ON v.rowid = m.rowid
-            WHERE v.embedding MATCH ?
+            WHERE v.embedding MATCH @query
             ORDER BY v.distance
-            LIMIT ?
+            LIMIT @limit
             """,
             new { query = queryJson, limit = topK }
         ).ToList();
