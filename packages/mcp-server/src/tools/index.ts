@@ -51,14 +51,19 @@ export const toolDefinitions: Tool[] = [
   },
   {
     name: "semantic_search",
-    description: "Search the knowledge base using natural language. Finds relevant types, methods, fields, properties, and defs through vector similarity.",
+    description: "Search the knowledge base using natural language. Finds relevant types, methods, and defs through vector similarity. Use categories to narrow scope — e.g. ['type','method'] for code entities, or ['def'] for XML definitions.",
     inputSchema: {
       type: "object",
       properties: {
         query: { type: "string", description: "Natural language query describing what to find" },
+        categories: {
+          type: "array",
+          items: { type: "string", enum: ["type", "method", "def"] },
+          description: "Entity kinds to search. At least one required. type=classes/enums/interfaces, method=functions, def=XML Defs (ThingDef, SoundDef, etc.)"
+        },
         limit: { type: "number", description: "Max results (default: 10)" }
       },
-      required: ["query"]
+      required: ["query", "categories"]
     }
   },
 

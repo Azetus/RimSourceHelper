@@ -322,10 +322,15 @@ interface SearchResultItem {
 
 export async function semanticSearch(args: Record<string, unknown>, config: Config) {
   const query = args.query as string;
+  const categories = args.categories as string[] | undefined;
   const limit = (args.limit as number) ?? 10;
 
   if (!query || query.trim().length === 0) {
     return { content: [{ type: "text" as const, text: "query is required" }], isError: true };
+  }
+
+  if (!Array.isArray(categories) || categories.length === 0) {
+    return { content: [{ type: "text" as const, text: "categories is required. Must be a non-empty array of 'type', 'method', or 'def'." }], isError: true };
   }
 
   if (!config.vectorIndex?.enabled) {
@@ -353,7 +358,7 @@ export async function semanticSearch(args: Record<string, unknown>, config: Conf
     const queryVector = vectors[0];
 
     // 4. 向量检索
-    const searchResults = vectorSearch(vectorDbPath, queryVector, limit, queryConfig);
+    const searchResults = vectorSearch(vectorDbPath, queryVector, limit, queryConfig, categories);
 
     if (searchResults.length === 0) {
       return { content: [{ type: "text" as const, text: `No results found for: "${query}"` }] };
@@ -379,7 +384,8 @@ function vectorSearch(
   vectorDbPath: string,
   queryVector: number[],
   limit: number,
-  queryConfig: { provider: string; model: string; dimension: number }
+  queryConfig: { provider: string; model: string; dimension: number },
+  categories: string[]
 ): SearchResultItem[] {
   const Database = cjsRequire("better-sqlite3");
   const sqliteVec = cjsRequire("sqlite-vec");
@@ -405,13 +411,15 @@ function vectorSearch(
     }
 
     // 检索
-    const rows = db.prepare(`
+    const kindPlaceholders = categories.map(() => "?").join(",");
+    const sql = `
       SELECT v.distance, m.sqlite_id, m.kind, m.full_name
       FROM vectors v
       JOIN vector_metadata m ON v.rowid = m.rowid
-      WHERE v.embedding MATCH ? AND k = ?
+      WHERE v.embedding MATCH ? AND k = ? AND m.kind IN (${kindPlaceholders})
       ORDER BY v.distance
-    `).all(JSON.stringify(queryVector), limit) as VectorSearchRow[];
+    `;
+    const rows = db.prepare(sql).all(JSON.stringify(queryVector), limit, ...categories) as VectorSearchRow[];
 
     return rows.map(r => ({
       sqliteId: r.sqlite_id,
