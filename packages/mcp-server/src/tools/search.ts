@@ -409,9 +409,8 @@ function vectorSearch(
       SELECT v.distance, m.sqlite_id, m.kind, m.full_name
       FROM vectors v
       JOIN vector_metadata m ON v.rowid = m.rowid
-      WHERE v.embedding MATCH ?
+      WHERE v.embedding MATCH ? AND k = ?
       ORDER BY v.distance
-      LIMIT ?
     `).all(JSON.stringify(queryVector), limit) as VectorSearchRow[];
 
     return rows.map(r => ({

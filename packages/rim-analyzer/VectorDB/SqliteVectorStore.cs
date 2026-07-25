@@ -90,9 +90,8 @@ public class SqliteVectorStore : IVectorStore
             SELECT m.sqlite_id AS SqliteId, m.kind AS Kind, m.full_name AS FullName, v.distance AS Distance
             FROM vectors v
             JOIN vector_metadata m ON v.rowid = m.rowid
-            WHERE v.embedding MATCH @query
+            WHERE v.embedding MATCH @query AND k = @limit
             ORDER BY v.distance
-            LIMIT @limit
             """,
             new { query = queryJson, limit = topK }
         ).ToList();

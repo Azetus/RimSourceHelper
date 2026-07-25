@@ -5,6 +5,7 @@ import { fileURLToPath } from "url";
 export interface EmbeddingServiceConfig {
   host: string;
   port: number;
+  batchSize?: number;
 }
 
 export interface VectorIndexConfig {

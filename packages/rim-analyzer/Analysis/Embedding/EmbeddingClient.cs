@@ -10,7 +10,7 @@ public class EmbeddingClient
 
     public EmbeddingClient(string baseUrl)
     {
-        _http = new HttpClient { Timeout = TimeSpan.FromSeconds(30) };
+        _http = new HttpClient { Timeout = TimeSpan.FromSeconds(120) };
         _http.BaseAddress = new Uri(baseUrl.TrimEnd('/'));
     }
 

@@ -39,12 +39,9 @@ public static class AddModCommand
             Description = "Enable verbose logging"
         };
 
-        var vectorDbOption = new Option<string?>("--vector-db") { Description = "Vector index file path (optional)" };
-        var embeddingUrlOption = new Option<string?>("--embedding-url") { Description = "embedding-service URL (optional)" };
-
         var command = new Command("add-mod", "Add a mod's code and defs to existing database")
         {
-            modPathOption, dbOption, gamePathOption, verboseOption, vectorDbOption, embeddingUrlOption
+            modPathOption, dbOption, gamePathOption, verboseOption
         };
 
         command.SetAction((parseResult, _) =>
@@ -54,9 +51,7 @@ public static class AddModCommand
                 ModPath = parseResult.GetValue(modPathOption)!,
                 Database = parseResult.GetValue(dbOption)!,
                 GamePath = parseResult.GetValue(gamePathOption)!,
-                Verbose = parseResult.GetValue(verboseOption),
-                VectorDb = parseResult.GetValue(vectorDbOption),
-                EmbeddingUrl = parseResult.GetValue(embeddingUrlOption)
+                Verbose = parseResult.GetValue(verboseOption)
             };
 
             try
@@ -188,21 +183,6 @@ public static class AddModCommand
 
         Log("[INFO] Mod added successfully.");
 
-        string? indexError = null;
-        if (options.VectorDb is not null && options.EmbeddingUrl is not null)
-        {
-            try
-            {
-                Log("[INFO] Building vector index for mod...");
-                IndexCommand.Execute(options.Database, options.VectorDb, options.EmbeddingUrl, sourceId, options.Verbose ? Log : null);
-            }
-            catch (Exception ex)
-            {
-                indexError = ex.Message;
-                Log($"[WARN] Vector index build failed: {ex.Message}");
-            }
-        }
-
         return new BuildResult
         {
             Status = "success",
@@ -210,8 +190,7 @@ public static class AddModCommand
             Types = typesCount,
             Methods = methodsCount,
             Calls = callCount,
-            Defs = defResult.Defs,
-            IndexError = indexError
+            Defs = defResult.Defs
         };
     }
 

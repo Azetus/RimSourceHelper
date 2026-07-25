@@ -11,8 +11,6 @@ namespace RimAnalyzer.Commands;
 // index 子命令：从 SQLite 元数据构建语义索引（全量或单 Source 增量）
 public static class IndexCommand
 {
-    private const int BatchSize = 32;
-    private const int LogInterval = 1000;
 
     public static Command Create()
     {
@@ -20,11 +18,12 @@ public static class IndexCommand
         var vectorDbOption = new Option<string>("--vector-db") { Description = "Vector index file path", Required = true };
         var embeddingUrlOption = new Option<string>("--embedding-url") { Description = "embedding-service URL (e.g. http://127.0.0.1:8000)", Required = true };
         var sourceIdOption = new Option<long?>("--source-id") { Description = "Optional: rebuild only this SourceId" };
+        var batchSizeOption = new Option<int>("--batch-size") { Description = "Batch size for embedding (default: 128)" };
         var verboseOption = new Option<bool>("--verbose") { Description = "Enable verbose logging" };
 
         var command = new Command("index", "Build or rebuild the semantic vector index")
         {
-            dbOption, vectorDbOption, embeddingUrlOption, sourceIdOption, verboseOption
+            dbOption, vectorDbOption, embeddingUrlOption, sourceIdOption, batchSizeOption, verboseOption
         };
 
         command.SetAction((parseResult, _) =>
@@ -33,11 +32,13 @@ public static class IndexCommand
             var vectorDbPath = parseResult.GetValue(vectorDbOption)!;
             var embeddingUrl = parseResult.GetValue(embeddingUrlOption)!;
             var sourceId = parseResult.GetValue(sourceIdOption);
+            var batchSize = parseResult.GetValue(batchSizeOption);
+            if (batchSize <= 0) batchSize = 128;
             var verbose = parseResult.GetValue(verboseOption);
 
             try
             {
-                var result = Execute(dbPath, vectorDbPath, embeddingUrl, sourceId, verbose ? Console.Error.WriteLine : null);
+                var result = Execute(dbPath, vectorDbPath, embeddingUrl, sourceId, batchSize, verbose ? Console.Error.WriteLine : null);
                 Console.WriteLine(JsonSerializer.Serialize(result));
             }
             catch (Exception ex)
@@ -53,11 +54,13 @@ public static class IndexCommand
     }
 
     internal static object Execute(string dbPath, string vectorDbPath, string embeddingUrl,
-        long? sourceId, Action<string>? log)
+        long? sourceId, int batchSize, Action<string>? log)
     {
         if (!File.Exists(dbPath))
             throw new FileNotFoundException($"Database not found: {dbPath}");
 
+        try
+        {
         using var db = DatabaseContext.Open(dbPath, force: false);
         var conn = db.Connection;
 
@@ -115,65 +118,62 @@ public static class IndexCommand
             allDocs.Add(doc);
             allTexts.Add(text);
 
-            if (allDocs.Count >= BatchSize)
+            if (allDocs.Count >= batchSize)
                 FlushBatch();
-
-            if (totalCount > 0 && totalCount % LogInterval < BatchSize)
-                log?.Invoke($"[INFO] Indexed {totalCount} entities...");
         }
 
         // Types
+        var typeCount = entities.Types.Count;
+        var typeIdx = 0;
         foreach (var t in entities.Types)
         {
             interfaceMap.TryGetValue(t.Id, out var ifaces);
             var text = SemanticFormatter.FormatType(t, ifaces ?? []);
             AddEntity(new VectorDocument(t.Id, t.SourceId, "type", t.FullName), text);
+            typeIdx++;
+            if (typeIdx % 1000 == 0) log?.Invoke($"[INFO] Indexing types... {typeIdx}/{typeCount}");
         }
         FlushBatch();
-        log?.Invoke($"[INFO] Indexed {entities.Types.Count} types");
+        log?.Invoke($"[INFO] Types complete: {typeCount}");
 
         // Methods
+        var methodCount = entities.Methods.Count;
+        var methodIdx = 0;
         foreach (var m in entities.Methods)
         {
             calleeMap.TryGetValue(m.Id, out var callees);
             var text = SemanticFormatter.FormatMethod(m.ParentFullName, m.Name, m.ReturnType, m.ParamTypes, callees ?? []);
             AddEntity(new VectorDocument(m.Id, m.SourceId, "method", m.FullName), text);
+            methodIdx++;
+            if (methodIdx % 5000 == 0) log?.Invoke($"[INFO] Indexing methods... {methodIdx}/{methodCount}");
         }
         FlushBatch();
-        log?.Invoke($"[INFO] Indexed {entities.Methods.Count} methods");
-
-        // Fields
-        foreach (var f in entities.Fields)
-        {
-            var text = SemanticFormatter.FormatField(f.ParentFullName, f.Name, f.FieldType);
-            AddEntity(new VectorDocument(f.Id, f.SourceId, "field", $"{f.ParentFullName}.{f.Name}"), text);
-        }
-        FlushBatch();
-        log?.Invoke($"[INFO] Indexed {entities.Fields.Count} fields");
-
-        // Properties
-        foreach (var p in entities.Properties)
-        {
-            var text = SemanticFormatter.FormatProperty(p.ParentFullName, p.Name, p.PropertyType, p.HasGetter, p.HasSetter);
-            AddEntity(new VectorDocument(p.Id, p.SourceId, "property", $"{p.ParentFullName}.{p.Name}"), text);
-        }
-        FlushBatch();
-        log?.Invoke($"[INFO] Indexed {entities.Properties.Count} properties");
+        log?.Invoke($"[INFO] Methods complete: {methodCount}");
 
         // Defs
+        var defCount = entities.Defs.Count;
+        var defIdx = 0;
         foreach (var d in entities.Defs)
         {
             var text = SemanticFormatter.FormatDef(d);
             AddEntity(new VectorDocument(d.Id, d.SourceId, "def", $"{d.DefType}/{d.DefName}"), text);
+            defIdx++;
+            if (defIdx % 5000 == 0) log?.Invoke($"[INFO] Indexing defs... {defIdx}/{defCount}");
         }
         FlushBatch();
-        log?.Invoke($"[INFO] Indexed {entities.Defs.Count} defs");
+        log?.Invoke($"[INFO] Defs complete: {defCount}");
 
         // 6. 写入模型配置
         store.SetConfig(new VectorConfig(info.Provider, info.Model, info.Dimension));
         log?.Invoke($"[INFO] Index complete. Total entities: {totalCount}");
 
         return new { status = "success", entities = totalCount };
+        }
+        finally
+        {
+            var lockPath = vectorDbPath + ".lock";
+            if (File.Exists(lockPath)) File.Delete(lockPath);
+        }
     }
 
     // ===== Entity Collection =====

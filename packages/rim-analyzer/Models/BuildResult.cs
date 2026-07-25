@@ -24,10 +24,6 @@ public class BuildResult
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public int? SourceId { get; init; }
 
-    [JsonPropertyName("indexError")]
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public string? IndexError { get; init; }
-
     [JsonPropertyName("error")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Error { get; init; }

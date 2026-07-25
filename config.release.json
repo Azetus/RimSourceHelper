@@ -7,7 +7,7 @@
     "port": 8000,
     "provider": "local",
     "model": "BAAI/bge-m3",
-    "batchSize": 32,
+    "batchSize": 128,
     "local": {
         "cachePath": "./models"
     },
