@@ -12,6 +12,7 @@ public class TypeEntity
     public bool IsInterface { get; set; }
     public bool IsEnum { get; set; }
     public bool IsSealed { get; set; }
+    public bool IsCompilerGenerated { get; set; }
     public string? Accessibility { get; set; }
     public string? AssemblyName { get; set; }
     public string? AssemblyPath { get; set; }

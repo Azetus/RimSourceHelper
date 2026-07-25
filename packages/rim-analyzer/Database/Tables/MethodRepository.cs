@@ -11,8 +11,8 @@ public class MethodRepository(SqliteConnection connection)
     public int BulkInsert(IEnumerable<MethodEntity> methods)
     {
         const string sql = """
-            INSERT INTO Methods (TypeId, Name, FullName, Signature, ReturnType, IsStatic, IsVirtual, IsAbstract, IsAccessor, ParamTypes, Accessibility, SourceId)
-            VALUES (@TypeId, @Name, @FullName, @Signature, @ReturnType, @IsStatic, @IsVirtual, @IsAbstract, @IsAccessor, @ParamTypes, @Accessibility, @SourceId)
+            INSERT INTO Methods (TypeId, Name, FullName, Signature, ReturnType, IsStatic, IsVirtual, IsAbstract, IsAccessor, IsCompilerGenerated, ParamTypes, Accessibility, SourceId)
+            VALUES (@TypeId, @Name, @FullName, @Signature, @ReturnType, @IsStatic, @IsVirtual, @IsAbstract, @IsAccessor, @IsCompilerGenerated, @ParamTypes, @Accessibility, @SourceId)
             """;
 
         using var transaction = connection.BeginTransaction();

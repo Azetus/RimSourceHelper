@@ -2,7 +2,7 @@
     "host": "127.0.0.1",
     "port": 8000,
     "provider": "api",
-    "model": "BAAI/bge-m3",
+    "model": "text-embedding-all-minilm-l6-v2-embedding",
     "batchSize": 32,
     "local": {
         "cachePath": "./models"

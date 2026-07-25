@@ -39,6 +39,8 @@ public static class MetadataCollector
         if (type.Name == "<Module>")
             return;
 
+        var isCompilerGenerated = HasCompilerGeneratedAttribute(type);
+
         var meta = new TypeMetadata
         {
             Type = new TypeEntity
@@ -51,6 +53,7 @@ public static class MetadataCollector
                 IsInterface = type.IsInterface,
                 IsEnum = type.IsEnum,
                 IsSealed = type.IsSealed,
+                IsCompilerGenerated = isCompilerGenerated,
                 Accessibility = GetTypeAccessibility(type),
                 AssemblyName = assemblyName,
                 AssemblyPath = assemblyPath
@@ -58,7 +61,7 @@ public static class MetadataCollector
             Interfaces = type.Interfaces.Select(i => i.InterfaceType.FullName).ToList()
         };
 
-        CollectMethods(type, meta, methodMap);
+        CollectMethods(type, meta, isCompilerGenerated, methodMap);
         CollectFields(type, meta, fieldMap);
         CollectProperties(type, meta);
 
@@ -70,7 +73,7 @@ public static class MetadataCollector
     }
 
     private static void CollectMethods(TypeDefinition type, TypeMetadata meta,
-        Dictionary<MethodDefinition, MethodEntity> methodMap)
+        bool typeIsCompilerGenerated, Dictionary<MethodDefinition, MethodEntity> methodMap)
     {
         foreach (var method in type.Methods)
         {
@@ -80,6 +83,9 @@ public static class MetadataCollector
 
             var isAccessor = method.IsSpecialName &&
                 (method.Name.StartsWith("get_") || method.Name.StartsWith("set_"));
+
+            var isCompilerGenerated = typeIsCompilerGenerated ||
+                HasCompilerGeneratedAttribute(method);
 
             var entity = new MethodEntity
             {
@@ -91,6 +97,7 @@ public static class MetadataCollector
                 IsVirtual = method.IsVirtual,
                 IsAbstract = method.IsAbstract,
                 IsAccessor = isAccessor,
+                IsCompilerGenerated = isCompilerGenerated,
                 ParamTypes = JsonSerializer.Serialize(method.Parameters.Select(p => p.ParameterType.FullName).ToArray()),
                 Accessibility = GetMethodAccessibility(method)
             };
@@ -194,4 +201,9 @@ public static class MetadataCollector
         var method = prop.GetMethod ?? prop.SetMethod;
         return method is not null ? GetMethodAccessibility(method) : null;
     }
+
+    private static readonly string CompilerGeneratedAttribute = "System.Runtime.CompilerServices.CompilerGeneratedAttribute";
+
+    private static bool HasCompilerGeneratedAttribute(ICustomAttributeProvider provider) =>
+        provider.CustomAttributes.Any(a => a.AttributeType.FullName == CompilerGeneratedAttribute);
 }

@@ -194,12 +194,9 @@ public static class IndexCommand
         // Types
         var types = conn.Query<TypeEntity>(
             sourceId.HasValue
-                ? "SELECT * FROM Types WHERE SourceId = @sid ORDER BY Id"
-                : "SELECT * FROM Types ORDER BY Id"
-            , param).Where(t =>
-                t.Name != "<Module>" &&
-                !t.Name.StartsWith("<>c__") &&
-                !t.Name.StartsWith("<>c")).ToList();
+                ? "SELECT * FROM Types WHERE SourceId = @sid AND IsCompilerGenerated = 0 ORDER BY Id"
+                : "SELECT * FROM Types WHERE IsCompilerGenerated = 0 ORDER BY Id"
+            , param).ToList();
         log?.Invoke($"[INFO] Collected {types.Count} types (filtered)");
 
         // Methods：排除 accessor + 编译器生成
@@ -210,7 +207,7 @@ public static class IndexCommand
                          t.FullName AS ParentFullName
                   FROM Methods m
                   JOIN Types t ON m.TypeId = t.Id
-                  WHERE m.SourceId = @sid
+                  WHERE m.SourceId = @sid AND m.IsAccessor = 0 AND m.IsCompilerGenerated = 0
                   ORDER BY m.Id
                   """
                 : """
@@ -218,10 +215,10 @@ public static class IndexCommand
                          t.FullName AS ParentFullName
                   FROM Methods m
                   JOIN Types t ON m.TypeId = t.Id
+                  WHERE m.IsAccessor = 0 AND m.IsCompilerGenerated = 0
                   ORDER BY m.Id
                   """
             , param).Cast<dynamic>()
-            .Where(m => m.IsAccessor == 0L && !((string)m.FullName).Contains("<>"))
             .Select(m => new MethodIndexItem
             {
                 Id = (long)m.Id,
