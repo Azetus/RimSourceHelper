@@ -80,7 +80,7 @@ export const toolDefinitions: Tool[] = [
   },
   {
     name: "get_call_tree",
-    description: "Recursively expand call chain with cycle detection. Supports methods only (not fields/properties).",
+    description: "Recursively expand a method's call chain with cycle detection. If a method full name matches multiple overloads, the tool lists candidate signatures.",
     inputSchema: {
       type: "object",
       properties: {
@@ -169,7 +169,7 @@ export const toolDefinitions: Tool[] = [
   // --- 源码 ---
   {
     name: "decompile_target",
-    description: "Decompile a type or method on demand. Returns only source code. Use this to see field default values and implementation details.",
+    description: "Decompile a type or method on demand. Use an exact method signature for a single overload. Returns source code, including implementation details and field default values.",
     inputSchema: {
       type: "object",
       properties: {

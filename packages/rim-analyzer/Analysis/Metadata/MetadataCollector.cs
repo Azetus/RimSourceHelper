@@ -84,7 +84,7 @@ public static class MetadataCollector
             {
                 Name = method.Name,
                 FullName = $"{type.FullName}.{method.Name}",
-                Signature = BuildSignature(type, method),
+                Signature = BuildSignature(method),
                 ReturnType = method.ReturnType.FullName,
                 IsStatic = method.IsStatic,
                 IsVirtual = method.IsVirtual,
@@ -130,13 +130,13 @@ public static class MetadataCollector
         }
     }
 
-    private static string BuildSignature(TypeDefinition type, MethodDefinition method)
+    internal static string BuildSignature(MethodDefinition method)
     {
         var paramTypes = method.Parameters
             .Select(p => FormatTypeName(p.ParameterType))
             .ToArray();
         var returnType = FormatTypeName(method.ReturnType);
-        return $"{returnType} {type.FullName}.{method.Name}({string.Join(",", paramTypes)})";
+        return $"{returnType} {method.DeclaringType.FullName}.{method.Name}({string.Join(",", paramTypes)})";
     }
 
     private static string FormatTypeName(TypeReference typeRef)

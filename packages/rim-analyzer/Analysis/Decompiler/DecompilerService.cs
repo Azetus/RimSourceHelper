@@ -1,7 +1,10 @@
+using System.Reflection.Metadata.Ecma335;
 using ICSharpCode.Decompiler;
 using ICSharpCode.Decompiler.CSharp;
 using ICSharpCode.Decompiler.Metadata;
 using ICSharpCode.Decompiler.TypeSystem;
+using Mono.Cecil;
+using RimAnalyzer.Analysis.Metadata;
 
 namespace RimAnalyzer.Analysis.Decompiler;
 
@@ -44,29 +47,25 @@ public static class DecompilerService
 
     // 通过完整签名反编译单个方法
     public static string DecompileMethodBySignature(string assemblyPath, string[] referencePaths,
-        string typeFullName, string methodName, string[] parameterTypes)
+        string typeFullName, string methodName, string signature)
     {
-        var decompiler = CreateDecompiler(assemblyPath, referencePaths);
-        var normalizedName = typeFullName.Replace('/', '+');
-        var fullTypeName = new FullTypeName(normalizedName);
+        using var module = ModuleDefinition.ReadModule(assemblyPath);
+        var type = module.GetType(typeFullName)
+            ?? throw new InvalidOperationException($"Type not found in assembly: {typeFullName}");
 
-        var type = decompiler.TypeSystem.FindType(fullTypeName).GetDefinition();
-        if (type is null)
-            throw new InvalidOperationException($"Type not found in assembly: {typeFullName}");
-
-        // 按参数数量粗匹配（精确类型匹配复杂度高，暂用参数数量区分）
+        // 复用建库时的签名格式，再按匹配方法的元数据令牌反编译。
         var methods = type.Methods
-            .Where(m => m.Name == methodName && m.Parameters.Count == parameterTypes.Length)
-            .ToList();
+            .Where(method => method.Name == methodName && MetadataCollector.BuildSignature(method) == signature)
+            .Take(2)
+            .ToArray();
 
-        if (methods.Count == 0)
-            throw new InvalidOperationException($"Method '{methodName}' with {parameterTypes.Length} parameters not found");
+        if (methods.Length == 0)
+            throw new InvalidOperationException($"Method signature not found in assembly: {signature}");
+        if (methods.Length > 1)
+            throw new InvalidOperationException($"Method signature matches multiple overloads in assembly: {signature}");
 
-        var sources = methods
-            .Select(m => decompiler.DecompileAsString(m.MetadataToken))
-            .ToList();
-
-        return string.Join("\n", sources);
+        var decompiler = CreateDecompiler(assemblyPath, referencePaths);
+        return decompiler.DecompileAsString(MetadataTokens.EntityHandle(methods[0].MetadataToken.ToInt32()));
     }
 
     private static CSharpDecompiler CreateDecompiler(string assemblyPath, string[] referencePaths)

@@ -107,9 +107,25 @@ export async function getCallTree(args: Record<string, unknown>, config: Config)
   const direction = args.direction as "callers" | "callees";
   const maxDepth = (args.max_depth as number) ?? 3;
 
-  const result = withDatabase(config.databasePath, (db): CallTreeNode[] | string => {
-    const ids = resolveMethodIds(db, method);
+  const result = withDatabase(config.databasePath, (db): CallTreeNode | string => {
+    // 精确签名最多取两个匹配，足以判断索引里的签名是否有歧义。
+    const ids = resolveMethodIds(db, method, 2);
     if (ids.length === 0) return `Method not found: ${method}`;
+
+    const infoStmt = db.prepare("SELECT FullName, Signature FROM Methods WHERE Id = ?");
+    if (ids.length > 1) {
+      const matches = ids.map(id => infoStmt.get(id) as { FullName: string; Signature: string });
+      if (matches[0].FullName === method) {
+        const signatures = [...new Set(matches.map(match => match.Signature))].sort();
+        const guidance = signatures.length === matches.length
+          ? "Pass a full signature as `method` to get its call tree."
+          : "Pass a unique full signature as `method`. Some overloads share the same indexed signature.";
+        return [`Multiple overloads found for ${method}. ${guidance}`, "", "```text", ...signatures, "```"].join("\n");
+      }
+      if (matches[0].Signature === method) {
+        return `Method signature matches multiple indexed overloads: ${method}`;
+      }
+    }
 
     const neighborStmt = direction === "callers"
       ? db.prepare(
@@ -121,28 +137,26 @@ export async function getCallTree(args: Record<string, unknown>, config: Config)
            FROM Methods m JOIN Calls c ON m.Id = c.CalleeMethodId
            WHERE c.CallerMethodId = ?`);
 
-    const infoStmt = db.prepare("SELECT FullName, Signature FROM Methods WHERE Id = ?");
-
-    return ids.map(id => buildTreeNode(id, maxDepth, 0, new Set<number>(), neighborStmt, infoStmt));
+    return buildTreeNode(ids[0], maxDepth, 0, new Set<number>(), neighborStmt, infoStmt);
   });
 
   if (typeof result === "string") {
     return { content: [{ type: "text" as const, text: result }], isError: true };
   }
 
-  const tree = result[0];
   const title = `## Call Tree: ${method} → ${direction} (depth ${maxDepth})`;
-  return { content: [{ type: "text" as const, text: formatCallTree(tree, title) }] };
+  return { content: [{ type: "text" as const, text: formatCallTree(result, title) }] };
 }
 
 // --- 内部辅助 ---
 
-function resolveMethodIds(db: DatabaseSync, method: string): number[] {
+function resolveMethodIds(db: DatabaseSync, method: string, signatureMatchLimit = 1): number[] {
   const byFullName = db.prepare("SELECT Id FROM Methods WHERE FullName = ?").all(method) as unknown as { Id: number }[];
   if (byFullName.length > 0) return byFullName.map(r => r.Id);
 
-  const bySignature = db.prepare("SELECT Id FROM Methods WHERE Signature = ?").get(method) as unknown as { Id: number } | undefined;
-  if (bySignature) return [bySignature.Id];
+  const bySignature = db.prepare("SELECT Id FROM Methods WHERE Signature = ? LIMIT ?")
+    .all(method, signatureMatchLimit) as unknown as { Id: number }[];
+  if (bySignature.length > 0) return bySignature.map(r => r.Id);
 
   const lastDot = method.lastIndexOf(".");
   if (lastDot > 0) {

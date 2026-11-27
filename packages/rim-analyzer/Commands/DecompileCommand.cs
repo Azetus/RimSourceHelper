@@ -91,7 +91,7 @@ public static class DecompileCommand
         var method = db.Connection.QueryFirstOrDefault<MethodEntity>(
             "SELECT * FROM Methods WHERE Signature = @target", new { target });
         if (method is not null)
-            return DecompileAsMethod(db, [method], managedDir);
+            return DecompileAsMethod(db, [method], managedDir, exactSignature: true);
 
         throw new InvalidOperationException($"Target not found in database: {target}");
     }
@@ -107,7 +107,8 @@ public static class DecompileCommand
         return new { status = "success", kind = "type", name = type.FullName, source = code };
     }
 
-    private static object DecompileAsMethod(DatabaseContext db, List<MethodEntity> methods, string managedDir)
+    private static object DecompileAsMethod(DatabaseContext db, List<MethodEntity> methods, string managedDir,
+        bool exactSignature = false)
     {
         // 所有重载应属于同一类型
         var firstMethod = methods[0];
@@ -119,7 +120,9 @@ public static class DecompileCommand
             ?? throw new InvalidOperationException($"No assembly path for type '{type.FullName}'. Rebuild the database.");
         var refPaths = BuildReferencePaths(assemblyPath, managedDir);
 
-        var code = DecompilerService.DecompileMethod(assemblyPath, refPaths, type.FullName, firstMethod.Name);
+        var code = exactSignature
+            ? DecompilerService.DecompileMethodBySignature(assemblyPath, refPaths, type.FullName, firstMethod.Name, firstMethod.Signature)
+            : DecompilerService.DecompileMethod(assemblyPath, refPaths, type.FullName, firstMethod.Name);
 
         return new
         {
