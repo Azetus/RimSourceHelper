@@ -26,6 +26,7 @@ await build({
 });
 
 writeFileSync(join(output, "package.json"), '{"type":"module"}\n');
+copyFileSync(join(root, "README.release.md"), join(output, "README.md"));
 copyFileSync(join(root, "opencode.example.release.json"), join(output, "opencode.example.json"));
 
 // Initialize local config once so rebuilds preserve the user's settings.

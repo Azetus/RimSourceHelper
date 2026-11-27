@@ -43,6 +43,7 @@ The release build writes these files to `release/`. Use a clean checkout when pr
 
 ```
 release/
+├── README.md             ← Quick start for the packaged release
 ├── index.js              ← MCP Server (single bundled file)
 ├── package.json          ← Declares the entry point as an ES module
 ├── config.json           ← Edit gamePath before use
