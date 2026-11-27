@@ -125,6 +125,7 @@ export function formatMethodInfo(info: MethodInfoResult): string {
   if (info.HarmonyPatches.length > 0) {
     lines.push("");
     lines.push(`## Harmony Patches (${info.HarmonyPatches.length})`);
+    lines.push("Matched by declaring type and method name across overloads.");
     for (const p of info.HarmonyPatches) {
       const prio = p.Priority ? ` [${p.Priority}]` : "";
       const mParams = p.TargetParams ? ` (${p.TargetParams})` : "";

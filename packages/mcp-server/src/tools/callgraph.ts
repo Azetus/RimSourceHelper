@@ -15,12 +15,13 @@ export async function getCallers(args: Record<string, unknown>, config: Config) 
   const result = withDatabase(config.databasePath, (db): MethodReference[] | FieldAccessEntry[] | string => {
     // 尝试作为方法/属性查找
     const ids = resolveMethodIds(db, method);
+    if (typeof ids === "string") return ids;
     if (ids.length > 0) {
       const placeholders = ids.map(() => "?").join(",");
       return db.prepare(
         `SELECT DISTINCT m.FullName, m.Signature, m.ReturnType, s.Name as Source
          FROM Methods m JOIN Calls c ON m.Id = c.CallerMethodId JOIN Sources s ON m.SourceId = s.Id
-         WHERE c.CalleeMethodId IN (${placeholders}) ORDER BY m.FullName LIMIT ? OFFSET ?`
+         WHERE c.CalleeMethodId IN (${placeholders}) ORDER BY m.FullName, m.Signature, s.Name LIMIT ? OFFSET ?`
       ).all(...ids, limit, offset) as unknown as MethodReference[];
     }
 
@@ -62,13 +63,14 @@ export async function getCallees(args: Record<string, unknown>, config: Config) 
 
   const result = withDatabase(config.databasePath, (db): { callees: MethodReference[]; fieldAccesses: FieldAccessEntry[] } | string => {
     const ids = resolveMethodIds(db, method);
+    if (typeof ids === "string") return ids;
     if (ids.length === 0) return `Method not found: ${method}`;
 
     const placeholders = ids.map(() => "?").join(",");
     const callees = db.prepare(
       `SELECT DISTINCT m.FullName, m.Signature, m.ReturnType, s.Name as Source
        FROM Methods m JOIN Calls c ON m.Id = c.CalleeMethodId JOIN Sources s ON m.SourceId = s.Id
-       WHERE c.CallerMethodId IN (${placeholders}) ORDER BY m.FullName LIMIT ? OFFSET ?`
+       WHERE c.CallerMethodId IN (${placeholders}) ORDER BY m.FullName, m.Signature, s.Name LIMIT ? OFFSET ?`
     ).all(...ids, limit, offset) as unknown as MethodReference[];
 
     const fieldAccesses: FieldAccessEntry[] = [];
@@ -108,8 +110,8 @@ export async function getCallTree(args: Record<string, unknown>, config: Config)
   const maxDepth = (args.max_depth as number) ?? 3;
 
   const result = withDatabase(config.databasePath, (db): CallTreeNode | string => {
-    // 精确签名最多取两个匹配，足以判断索引里的签名是否有歧义。
-    const ids = resolveMethodIds(db, method, 2);
+    const ids = resolveMethodIds(db, method);
+    if (typeof ids === "string") return ids;
     if (ids.length === 0) return `Method not found: ${method}`;
 
     const infoStmt = db.prepare("SELECT FullName, Signature FROM Methods WHERE Id = ?");
@@ -121,9 +123,6 @@ export async function getCallTree(args: Record<string, unknown>, config: Config)
           ? "Pass a full signature as `method` to get its call tree."
           : "Pass a unique full signature as `method`. Some overloads share the same indexed signature.";
         return [`Multiple overloads found for ${method}. ${guidance}`, "", "```text", ...signatures, "```"].join("\n");
-      }
-      if (matches[0].Signature === method) {
-        return `Method signature matches multiple indexed overloads: ${method}`;
       }
     }
 
@@ -150,13 +149,14 @@ export async function getCallTree(args: Record<string, unknown>, config: Config)
 
 // --- 内部辅助 ---
 
-function resolveMethodIds(db: DatabaseSync, method: string, signatureMatchLimit = 1): number[] {
+function resolveMethodIds(db: DatabaseSync, method: string): number[] | string {
   const byFullName = db.prepare("SELECT Id FROM Methods WHERE FullName = ?").all(method) as unknown as { Id: number }[];
   if (byFullName.length > 0) return byFullName.map(r => r.Id);
 
-  const bySignature = db.prepare("SELECT Id FROM Methods WHERE Signature = ? LIMIT ?")
-    .all(method, signatureMatchLimit) as unknown as { Id: number }[];
-  if (bySignature.length > 0) return bySignature.map(r => r.Id);
+  // 精确签名应唯一，最多取两个匹配即可判断是否有歧义。
+  const bySignature = db.prepare("SELECT Id FROM Methods WHERE Signature = ? LIMIT 2").all(method) as unknown as { Id: number }[];
+  if (bySignature.length > 1) return `Method signature matches multiple indexed overloads: ${method}`;
+  if (bySignature.length === 1) return [bySignature[0].Id];
 
   const lastDot = method.lastIndexOf(".");
   if (lastDot > 0) {

@@ -27,7 +27,7 @@ export const toolDefinitions: Tool[] = [
   },
   {
     name: "get_target_info",
-    description: "Get full info about a type or method: metadata, inheritance, callers/callees, harmony patches. Set include_source=true for decompiled code (slower).",
+    description: "Get metadata, inheritance, call relationships, and Harmony patches for a type or method. An exact method signature scopes callers and callees to one overload. A method full name includes all overloads. Set include_source=true for decompiled code (slower).",
     inputSchema: {
       type: "object",
       properties: {
@@ -57,7 +57,7 @@ export const toolDefinitions: Tool[] = [
     inputSchema: {
       type: "object",
       properties: {
-        method: { type: "string", description:         "Method FullName/Signature, or TypeFullName.FieldName, or TypeFullName.PropertyName" },
+        method: { type: "string", description: "Method full name for all overloads, exact signature for one overload, or TypeFullName.FieldName or TypeFullName.PropertyName" },
         limit: { type: "number", description: "Max results (default: 50)" },
         offset: { type: "number", description: "Starting position (default: 0)" }
       },
@@ -66,11 +66,11 @@ export const toolDefinitions: Tool[] = [
   },
   {
     name: "get_callees",
-    description: "Find all methods that the specified method directly calls. Set include_field_access=true to also see field/property accesses.",
+    description: "Find methods directly called by a method or a property's accessors. Set include_field_access=true to also see field/property accesses.",
     inputSchema: {
       type: "object",
       properties: {
-        method: { type: "string", description: "Method FullName or Signature" },
+        method: { type: "string", description: "Method full name for all overloads, exact signature for one overload, or TypeFullName.PropertyName" },
         limit: { type: "number", description: "Max results (default: 50)" },
         offset: { type: "number", description: "Starting position (default: 0)" },
         include_field_access: { type: "boolean", description: "Also return field/property accesses (default: false)" }

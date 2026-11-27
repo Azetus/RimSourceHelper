@@ -107,21 +107,22 @@ export async function getTargetInfo(args: Record<string, unknown>, config: Confi
   const target = args.target as string;
   const includeSource = (args.include_source as boolean) ?? false;
 
-  const info = withDatabase(config.databasePath, (db): TypeInfoResult | MethodInfoResult | null => {
+  const info = withDatabase(config.databasePath, (db): TypeInfoResult | MethodInfoResult | string => {
     const type = db.prepare("SELECT * FROM Types WHERE FullName = ?").get(target) as Record<string, unknown> | undefined;
     if (type) return gatherTypeInfo(db, type);
 
     const methods = db.prepare("SELECT * FROM Methods WHERE FullName = ?").all(target) as unknown as Record<string, unknown>[];
     if (methods.length > 0) return gatherMethodInfo(db, methods);
 
-    const method = db.prepare("SELECT * FROM Methods WHERE Signature = ?").get(target) as Record<string, unknown> | undefined;
-    if (method) return gatherMethodInfo(db, [method]);
+    const bySignature = db.prepare("SELECT * FROM Methods WHERE Signature = ? LIMIT 2").all(target) as Record<string, unknown>[];
+    if (bySignature.length > 1) return `Method signature matches multiple indexed overloads: ${target}`;
+    if (bySignature.length === 1) return gatherMethodInfo(db, bySignature);
 
-    return null;
+    return `Target not found: ${target}`;
   });
 
-  if (!info) {
-    return { content: [{ type: "text" as const, text: `Target not found: ${target}` }], isError: true };
+  if (typeof info === "string") {
+    return { content: [{ type: "text" as const, text: info }], isError: true };
   }
 
   if (includeSource) {
@@ -257,23 +258,25 @@ function gatherMethodInfo(db: DatabaseSync, methods: Record<string, unknown>[]):
     "SELECT Signature, ReturnType FROM Methods WHERE FullName = ? AND Id != ?"
   ).all(methodFullName, methodId) as unknown as { Signature: string; ReturnType: string }[];
 
-  const allMethodIds = db.prepare("SELECT Id FROM Methods WHERE FullName = ?").all(methodFullName) as unknown as { Id: number }[];
-  const idPlaceholders = allMethodIds.map(() => "?").join(",");
-  const idValues = allMethodIds.map(m => m.Id);
+  // 调用关系只使用本次查询命中的方法，重载列表仍按全名查找。
+  const idValues = methods.map(method => method.Id as number);
+  const idPlaceholders = idValues.map(() => "?").join(",");
 
   const CALL_LIMIT = 50;
   const callersRaw = db.prepare(
-    `SELECT DISTINCT m.FullName, m.Signature, s.Name as Source
+    `SELECT DISTINCT m.FullName, m.Signature, m.ReturnType, s.Name as Source
      FROM Methods m JOIN Calls c ON m.Id = c.CallerMethodId JOIN Sources s ON m.SourceId = s.Id
-     WHERE c.CalleeMethodId IN (${idPlaceholders}) LIMIT ${CALL_LIMIT + 1}`
+     WHERE c.CalleeMethodId IN (${idPlaceholders})
+     ORDER BY m.FullName, m.Signature, s.Name LIMIT ${CALL_LIMIT + 1}`
   ).all(...idValues) as unknown as MethodReference[];
   const callersTruncated = callersRaw.length > CALL_LIMIT;
   const callers = callersTruncated ? callersRaw.slice(0, CALL_LIMIT) : callersRaw;
 
   const calleesRaw = db.prepare(
-    `SELECT DISTINCT m.FullName, m.Signature, s.Name as Source
+    `SELECT DISTINCT m.FullName, m.Signature, m.ReturnType, s.Name as Source
      FROM Methods m JOIN Calls c ON m.Id = c.CalleeMethodId JOIN Sources s ON m.SourceId = s.Id
-     WHERE c.CallerMethodId IN (${idPlaceholders}) LIMIT ${CALL_LIMIT + 1}`
+     WHERE c.CallerMethodId IN (${idPlaceholders})
+     ORDER BY m.FullName, m.Signature, s.Name LIMIT ${CALL_LIMIT + 1}`
   ).all(...idValues) as unknown as MethodReference[];
   const calleesTruncated = calleesRaw.length > CALL_LIMIT;
   const callees = calleesTruncated ? calleesRaw.slice(0, CALL_LIMIT) : calleesRaw;
