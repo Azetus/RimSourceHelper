@@ -28,6 +28,7 @@ node_modules/
 **/node_modules/
 dist/
 release/
+/local-run/
 *.log
 
 packages/rim-analyzer/publish/*

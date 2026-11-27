@@ -25,28 +25,33 @@ Game DLLs + Defs XML
 
 ## Requirements
 
-- [.NET 10+](https://dotnet.microsoft.com/) Runtime
-- [Node.js 22.5+](https://nodejs.org/) (`node:sqlite` required)
+- [.NET 10 Runtime](https://dotnet.microsoft.com/) for `rim-analyzer`
+- [Node.js](https://nodejs.org/) 22.13+ on the 22.x line, or 24+, for the MCP server (`node:sqlite` required)
 
 ## Build from source
 
-Requires [pnpm](https://pnpm.io/).
+Requires [pnpm](https://pnpm.io/) and the .NET 10 SDK.
 
 ```bash
 git clone https://github.com/user/RimSourceHelper.git
 cd RimSourceHelper
 pnpm install
-pnpm build
+npm run build
 ```
 
-Output in `release/`:
+The release build writes these files to `release/`. Use a clean checkout when preparing a distribution archive.
+
 ```
 release/
 ├── index.js              ← MCP Server (single bundled file)
+├── package.json          ← Declares the entry point as an ES module
 ├── config.json           ← Edit gamePath before use
+├── opencode.example.json ← Example MCP client configuration
 └── rim-analyzer/
-    └── rim-analyzer.dll  ← Analyzer (cross-platform .NET)
+    └── ...               ← rim-analyzer.dll and its publish dependencies
 ```
+
+For local testing, run `npm run build:local`, set `gamePath` in `local-run/config.json`, and point the MCP client to `local-run/index.js`. Subsequent builds preserve the local config and database.
 
 ## Configuration
 

@@ -1,5 +1,7 @@
 packages:
   - 'packages/*'
+# Keep pnpm version management while allowing npm to run scripts.
+pmOnFail: download
 allowBuilds:
   better-sqlite3: set this to true or false
   esbuild: true
