@@ -71,10 +71,10 @@ public static class HarmonyCommand
         if (dllPaths.Length == 0)
             throw new InvalidOperationException("No DLL files found.");
 
-        // 构建引用路径：DLL 所在目录 + 游戏 Managed 目录（解析 0Harmony.dll 等依赖）
+        // 构建引用路径：Mod DLL 所在目录和游戏程序集目录。
         var refPaths = dllPaths.Select(Path.GetDirectoryName).Where(d => d is not null).Distinct().ToList();
         if (gamePath is not null)
-            refPaths.Add(Path.Combine(gamePath, "RimWorldWin64_Data", "Managed"));
+            refPaths.Add(new GamePathResolver(gamePath).ManagedDir);
 
         var assemblies = AssemblyLoader.Load(dllPaths, refPaths.ToArray()!, Log);
         if (assemblies.Count == 0)

@@ -2,12 +2,12 @@ using Mono.Cecil;
 
 namespace RimAnalyzer.Analysis;
 
-// 从游戏根目录推导各子路径（Windows 平台硬编码）
+// 从游戏根目录定位程序集和游戏数据。
 public class GamePathResolver
 {
-    private const string ManagedRelative = "RimWorldWin64_Data/Managed";
     private const string MainAssemblyName = "Assembly-CSharp.dll";
     private const string DataRelative = "Data";
+    private readonly string legacyManagedDir;
 
     public string GameRoot { get; }
     public string ManagedDir { get; }
@@ -17,9 +17,13 @@ public class GamePathResolver
     public GamePathResolver(string gamePath)
     {
         GameRoot = Path.GetFullPath(gamePath);
-        ManagedDir = Path.Combine(GameRoot, ManagedRelative);
-        MainAssemblyPath = Path.Combine(ManagedDir, MainAssemblyName);
         DataDir = Path.Combine(GameRoot, DataRelative);
+
+        // 优先使用 Waylith 根目录中的主程序集，再回退到 Unity 的 Managed 目录。
+        legacyManagedDir = Path.Combine(GameRoot, "RimWorldWin64_Data", "Managed");
+        ManagedDir = File.Exists(Path.Combine(GameRoot, MainAssemblyName)) ? GameRoot : legacyManagedDir;
+
+        MainAssemblyPath = Path.Combine(ManagedDir, MainAssemblyName);
     }
 
     // 验证关键路径是否存在
@@ -27,10 +31,9 @@ public class GamePathResolver
     {
         if (!Directory.Exists(GameRoot))
             throw new DirectoryNotFoundException($"Game root not found: {GameRoot}");
-        if (!Directory.Exists(ManagedDir))
-            throw new DirectoryNotFoundException($"Managed directory not found: {ManagedDir}");
         if (!File.Exists(MainAssemblyPath))
-            throw new FileNotFoundException($"Main assembly not found: {MainAssemblyPath}");
+            throw new FileNotFoundException(
+                $"Main assembly not found. Checked: {Path.Combine(GameRoot, MainAssemblyName)} and {Path.Combine(legacyManagedDir, MainAssemblyName)}.");
         if (!Directory.Exists(DataDir))
             throw new DirectoryNotFoundException($"Data directory not found: {DataDir}");
     }

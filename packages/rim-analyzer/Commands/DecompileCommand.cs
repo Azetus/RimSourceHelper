@@ -1,6 +1,7 @@
 using System.CommandLine;
 using System.Text.Json;
 using Dapper;
+using RimAnalyzer.Analysis;
 using RimAnalyzer.Analysis.Decompiler;
 using RimAnalyzer.Database;
 using RimAnalyzer.Models;
@@ -73,7 +74,7 @@ public static class DecompileCommand
         // 解析游戏路径（参数优先，否则从 Metadata 读取）
         var gamePath = gamePathOverride ?? db.Metadata.Get("game_path")
             ?? throw new InvalidOperationException("Game path not available. Pass --game-path or rebuild database.");
-        var managedDir = Path.Combine(gamePath, "RimWorldWin64_Data", "Managed");
+        var managedDir = new GamePathResolver(gamePath).ManagedDir;
 
         // 尝试作为类型查找
         var type = db.Types.FindByFullName(target);
