@@ -35,21 +35,29 @@ export async function findTarget(args: Record<string, unknown>, config: Config) 
     }
 
     if (kind !== "type" && kind !== "field" && kind !== "property") {
-      const sql = source
-        ? `SELECT 'method' as Kind, m.FullName, m.Name, m.Signature, m.ReturnType, s.Name as Source
-           FROM Methods m JOIN Sources s ON m.SourceId = s.Id
-           WHERE (m.Name LIKE ? OR m.FullName = ?) AND s.Name = ? AND m.IsAccessor = 0
-           ORDER BY CASE WHEN m.Name = ? OR m.FullName = ? THEN 0 WHEN m.Name LIKE ? THEN 1 ELSE 2 END, m.Name
-           LIMIT ? OFFSET ?`
-        : `SELECT 'method' as Kind, m.FullName, m.Name, m.Signature, m.ReturnType, s.Name as Source
-           FROM Methods m JOIN Sources s ON m.SourceId = s.Id
-           WHERE (m.Name LIKE ? OR m.FullName = ?) AND m.IsAccessor = 0
-           ORDER BY CASE WHEN m.Name = ? OR m.FullName = ? THEN 0 WHEN m.Name LIKE ? THEN 1 ELSE 2 END, m.Name
-           LIMIT ? OFFSET ?`;
-      const params: (string | number)[] = source
-        ? [`%${query}%`, query, source, query, query, `${query}%`, limit, offset]
-        : [`%${query}%`, query, query, query, `${query}%`, limit, offset];
-      items.push(...db.prepare(sql).all(...params) as unknown as TargetSearchResult[]);
+      // 按首个点号拆分短类型名，保留 .ctor 等带点的方法名。
+      const separator = query.indexOf(".");
+      const qualifiedMatch = "(t.Name = $typeName AND m.Name = $methodName)";
+      const sql = `SELECT 'method' as Kind, m.FullName, m.Name, m.Signature, m.ReturnType, s.Name as Source
+                   FROM Methods m JOIN Types t ON m.TypeId = t.Id JOIN Sources s ON m.SourceId = s.Id
+                   WHERE (m.Name LIKE $contains OR m.FullName = $query OR m.Signature = $query OR ${qualifiedMatch})
+                     AND m.IsAccessor = 0 ${source ? "AND s.Name = $source" : ""}
+                   ORDER BY CASE
+                     WHEN m.Name = $query OR m.FullName = $query OR m.Signature = $query THEN 0
+                     WHEN ${qualifiedMatch} OR m.Name LIKE $prefix THEN 1
+                     ELSE 2 END, m.Name
+                   LIMIT $limit OFFSET $offset`;
+      const params = {
+        $query: query,
+        $contains: `%${query}%`,
+        $prefix: `${query}%`,
+        $typeName: separator > 0 ? query.slice(0, separator) : null,
+        $methodName: separator > 0 ? query.slice(separator + 1) : null,
+        $limit: limit,
+        $offset: offset,
+        ...(source ? { $source: source } : {}),
+      };
+      items.push(...db.prepare(sql).all(params) as unknown as TargetSearchResult[]);
     }
 
     if (kind === "field") {

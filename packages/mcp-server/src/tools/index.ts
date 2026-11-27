@@ -12,11 +12,11 @@ export const toolDefinitions: Tool[] = [
   // --- 搜索与发现 ---
   {
     name: "find_target",
-    description: "Search types/methods/fields/properties by name. Supports FullName exact match and relevance ranking. Use kind to filter.",
+    description: "Search types, methods, fields, and properties by name with relevance ranking. Types and methods support exact full names. Methods also accept TypeShortName.MethodName and exact signatures.",
     inputSchema: {
       type: "object",
       properties: {
-        query: { type: "string", description: "Search keyword" },
+        query: { type: "string", description: "Name or keyword. For methods, enter a name such as DoExplosion, GenExplosion.DoExplosion, or Verse.GenExplosion.DoExplosion, or paste the full signature from a search result." },
         kind: { type: "string", enum: ["type", "method", "field", "property"], description: "Filter by kind" },
         source: { type: "string", description: "Filter by source name (e.g. 'RimWorld Core', 'Anomaly', or Mod's full name)" },
         limit: { type: "number", description: "Max results per kind (default: 20)" },
