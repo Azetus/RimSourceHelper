@@ -1,4 +1,4 @@
-# RimSourceHelper Quick Start
+# RimSourceHelper MCP Setup
 
 ## Requirements
 
@@ -6,20 +6,19 @@
 - .NET 10 Runtime.
 - A local RimWorld installation.
 
-Make sure the MCP client can find `node` and `dotnet` on its `PATH`.
+Verify that the MCP client can find `node` and `dotnet` on its `PATH`.
 
 ## Configure and connect
 
-1. Extract the entire package into one directory.
-2. Open `config.json` and set `gamePath` to the absolute path of your RimWorld installation directory, for example `D:/Steam/steamapps/common/RimWorld`.
-3. Add a local stdio server in your MCP client. Set its command to `node` and pass the absolute path to the extracted `index.js` as the argument. For OpenCode, use the bundled `opencode.example.json` and replace the path placeholder.
+1. Set `gamePath` in the adjacent `config.json` to the absolute path of the user's RimWorld installation directory, such as `D:/Steam/steamapps/common/RimWorld`.
+2. Register RimSourceHelper as a local stdio server in the MCP client. Launch `node` with the absolute path to the adjacent `index.js`. For OpenCode, adapt the MCP entry in `opencode.example.json` and replace the path placeholder.
 
 ```json
 ["node", "C:/Tools/RimSourceHelper/index.js"]
 ```
 
-## Build the knowledge database
+## Initialize the knowledge database
 
-After connecting for the first time, ask your agent to run `build_database` before querying RimWorld. Use `add_mod` to index any additional mods you want to inspect.
+After connecting, call `build_database` if the knowledge database has yet to be initialized. Use `list_sources` to inspect an existing database and `add_mod` to index any mods the user wants to query.
 
-**Running `build_database` again replaces the entire database and clears all previously imported mod indexes.** Re-import the mods you still need with `add_mod`.
+**Running `build_database` again replaces the entire database and clears all previously imported mod indexes.** After rebuilding, re-import the required mods with `add_mod`.
